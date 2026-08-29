@@ -30,6 +30,7 @@ export const TOUCHPLATE_TYPE_AUTOZERO = 'AutoZero';
 export const TOUCHPLATE_TYPE_AUTOZERO_ADVANCED = 'AutoZero Advanced';
 export const TOUCHPLATE_TYPE_ZERO = 'Z Probe';
 export const TOUCHPLATE_TYPE_3D = '3D Probe';
+export const TOUCHPLATE_TYPE_3D_ADVANCED = '3D Probe Advanced';
 export const TOUCHPLATE_TYPE_BITZERO = 'BitZero';
 export const TOUCHPLATE_TYPES = {
     TOUCHPLATE_TYPE_STANDARD: 'Standard Block',
@@ -37,6 +38,7 @@ export const TOUCHPLATE_TYPES = {
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED: 'AutoZero Advanced',
     TOUCHPLATE_TYPE_ZERO: 'Z Probe',
     TOUCHPLATE_TYPE_3D: '3D Probe',
+    TOUCHPLATE_TYPE_3D_ADVANCED: '3D Probe Advanced',
     TOUCHPLATE_TYPE_BITZERO: 'BitZero',
 };
 
@@ -54,6 +56,42 @@ export const TOUCHPLATE_TYPES = {
 export const isAutoZeroFamily = (touchplateType: string): boolean =>
     touchplateType === TOUCHPLATE_TYPE_AUTOZERO ||
     touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED;
+
+/*
+ * "3D Probe Advanced" is the same physical 3D/touch probe as "3D Probe".
+ * The 3D probe has no routine of its own: it runs the standard-block code with
+ * parameter overrides (tip-radius compensation instead of tool diameter, no
+ * plate thickness in XY, the probe3D Z thickness, and the xyRetract3D
+ * reposition). Advanced reuses all of that untouched and only adds the
+ * probing-corner selector and the Circle Center routine.
+ *
+ * As with the AutoZero family, use this predicate rather than comparing
+ * against a single constant - a missed call site silently reverts to
+ * tool-diameter compensation and the standard-block thickness.
+ */
+export const is3DFamily = (touchplateType: string): boolean =>
+    touchplateType === TOUCHPLATE_TYPE_3D ||
+    touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED;
+
+/*
+ * Circle Center finds the middle of a round feature and zeroes XY there.
+ * Bore = probe outward to the inside walls of a hole; boss = probe inward to
+ * the outside of a round part. Both take the midpoint of two opposing touches,
+ * so the tip radius cancels and needs no compensation.
+ */
+export const CIRCLE_MODE_BORE = 'Inside bore';
+export const CIRCLE_MODE_BOSS = 'Outside boss';
+export const CIRCLE_MODES = {
+    CIRCLE_MODE_BORE,
+    CIRCLE_MODE_BOSS,
+};
+
+/*
+ * getProbeCode dispatches on plate type and axes alone, and Circle Center's
+ * axes ({x, y}) collide with the plain "XY Touch" routine. Routines that need
+ * their own G-code therefore carry an explicit id.
+ */
+export const PROBE_ROUTINE_CIRCLE_CENTER = 'Circle Center';
 
 export const PROBE_TYPE_AUTO = 'Auto';
 export const PROBE_TYPE_TIP = 'Tip';

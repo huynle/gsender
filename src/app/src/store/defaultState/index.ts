@@ -338,6 +338,11 @@ const defaultState: State = {
             probeAxis: 'Z',
             tipDiameter3D: 2,
             xyRetract3D: 10,
+            // Circle Center (3D Probe Advanced). Millimetres, like the
+            // other probe dimensions above.
+            circleDiameter: 15,
+            circleMode: 'Inside bore',
+            circleProbeDepth: 5,
             probeMovementSpeed: 0,
         },
         rotary: {

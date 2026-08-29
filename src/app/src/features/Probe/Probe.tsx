@@ -44,6 +44,7 @@ import Tooltip from 'app/components/Tooltip';
 import {
     TOUCHPLATE_TYPES,
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
 } from 'app/lib/constants';
 
 type ProbeProps = {
@@ -217,7 +218,8 @@ const Probe = ({ state, actions }: ProbeProps) => {
                     />
                 </div>
             </div>
-            {touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED && (
+            {(touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED ||
+                touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED) && (
                 <ProbeDirectionSelection
                     direction={direction}
                     onClick={actions.nextProbeDirection}

@@ -9,6 +9,7 @@ import {
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     TOUCHPLATE_TYPE_ZERO,
     TOUCHPLATE_TYPE_3D,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
     TOUCHPLATE_TYPE_BITZERO,
 } from './constants';
 
@@ -60,6 +61,7 @@ export const storeUpdate = async (
             TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
             TOUCHPLATE_TYPE_ZERO,
             TOUCHPLATE_TYPE_3D,
+            TOUCHPLATE_TYPE_3D_ADVANCED,
             TOUCHPLATE_TYPE_BITZERO,
         ];
         const touchplateType =

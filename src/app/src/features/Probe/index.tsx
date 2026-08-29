@@ -28,12 +28,15 @@ import { usePostHog } from '@posthog/react';
 import controller from 'app/lib/controller';
 import {
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
     PROBE_TYPE_AUTO,
     TOUCHPLATE_TYPE_ZERO,
     PROBE_TYPE_DIAMETER,
-    TOUCHPLATE_TYPE_3D,
     PROBE_TYPE_TIP,
     isAutoZeroFamily,
+    is3DFamily,
+    CIRCLE_MODE_BORE,
+    PROBE_ROUTINE_CIRCLE_CENTER,
 } from 'app/lib/constants';
 import store from 'app/store';
 import { convertToImperial } from 'app/lib/units';
@@ -148,6 +151,17 @@ const ProbeWidget = () => {
     );
     const [probeMovementSpeed, setProbeMovementSpeed] = useState<number>(
         config.get('probeMovementSpeed') || 0,
+    );
+    // Circle Center settings. Held in millimetres and passed through
+    // unconverted: the routine forces G21 so its $13 handling stays sound.
+    const [circleDiameter, setCircleDiameter] = useState<number>(
+        config.get('circleDiameter') || 15,
+    );
+    const [circleMode, setCircleMode] = useState<string>(
+        config.get('circleMode') || CIRCLE_MODE_BORE,
+    );
+    const [circleProbeDepth, setCircleProbeDepth] = useState<number>(
+        config.get('circleProbeDepth') || 5,
     );
     const [touchplate, setTouchplate] = useState<ProbeProfile>(
         store.get('workspace.probeProfile', {}),
@@ -304,7 +318,7 @@ const ProbeWidget = () => {
                 x: false,
             };
 
-            const is3D = selectedProfile.touchplateType === TOUCHPLATE_TYPE_3D;
+            const is3D = is3DFamily(selectedProfile.touchplateType);
 
             if (selectedProfile.touchplateType === TOUCHPLATE_TYPE_ZERO) {
                 functions.z = true;
@@ -379,6 +393,24 @@ const ProbeWidget = () => {
                     },
                 };
                 commands.push(command);
+            }
+
+            // Circle Center is exclusive to 3D Probe Advanced. Its axes match
+            // "XY Touch", so getProbeCode separates the two on the routine id.
+            if (
+                selectedProfile.touchplateType ===
+                TOUCHPLATE_TYPE_3D_ADVANCED
+            ) {
+                commands.push({
+                    id: PROBE_ROUTINE_CIRCLE_CENTER,
+                    safe: true,
+                    tool: false,
+                    axes: {
+                        x: true,
+                        y: true,
+                        z: false,
+                    },
+                });
             }
             return commands;
         },
@@ -540,6 +572,14 @@ const ProbeWidget = () => {
             // unconverted mm/min value regardless of display units
             probeMovementSpeedAuto: probeMovementSpeed,
             firmware: type,
+            // Circle Center also forces G21, so it likewise needs the raw mm
+            // and mm/min values rather than the display-converted ones.
+            routineId: availableProbeCommands[selectedProbeCommand]?.id,
+            circleDiameter,
+            circleMode,
+            circleProbeDepth,
+            probeFastMm: probeFastFeedrate,
+            probeSlowMm: probeFeedrate,
         };
 
         const code = getProbeCode(options, direction);
@@ -587,7 +627,8 @@ const ProbeWidget = () => {
                 // offset the zero by ~45mm on a plate with no way to see it.
                 if (
                     probeProfile.touchplateType !==
-                    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED
+                        TOUCHPLATE_TYPE_AUTOZERO_ADVANCED &&
+                    probeProfile.touchplateType !== TOUCHPLATE_TYPE_3D_ADVANCED
                 ) {
                     setDirection(0);
                 }
@@ -622,6 +663,9 @@ const ProbeWidget = () => {
             setProbeCommand(config.get('probeCommand', 'G38.2'));
             setUseTLO(config.get('useTLO'));
             setProbeDepth(config.get('probeDepth') || {});
+            setCircleDiameter(config.get('circleDiameter') || 15);
+            setCircleMode(config.get('circleMode') || CIRCLE_MODE_BORE);
+            setCircleProbeDepth(config.get('circleProbeDepth') || 5);
             setProbeFeedrate(config.get('probeFeedrate') || {});
             setProbeFastFeedrate(config.get('probeFastFeedrate') || {});
             setTouchPlateHeight(config.get('touchPlateHeight') || {});

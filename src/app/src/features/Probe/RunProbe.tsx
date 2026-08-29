@@ -42,8 +42,9 @@ import { PROBING_CATEGORY } from 'app/constants';
 import useKeybinding from 'app/lib/useKeybinding';
 import useShuttleEvents from 'app/hooks/useShuttleEvents';
 import {
-    TOUCHPLATE_TYPE_3D,
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
+    is3DFamily,
 } from 'app/lib/constants';
 
 interface RunProbeProps {
@@ -143,9 +144,10 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
     //const probeCommands = actions.generateProbeCommands();
     //console.log(probeCommands.length);
     const probeCommand = availableProbeCommands[selectedProbeCommand];
-    const is3DProbe = touchplateType === TOUCHPLATE_TYPE_3D;
-    const isAutoZeroAdvanced =
-        touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED;
+    const is3DProbe = is3DFamily(touchplateType);
+    const isCornerSelectable =
+        touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED ||
+        touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED;
     const directionLabels = [
         'Bottom Left',
         'Top Left',
@@ -155,7 +157,7 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
     const directionLabel = directionLabels[direction] || 'Unknown';
     // Probing a non-default corner is the one setting here that silently moves
     // the zero by ~45mm, so call it out explicitly before the routine starts.
-    const showDirectionWarning = isAutoZeroAdvanced && direction !== 0;
+    const showDirectionWarning = isCornerSelectable && direction !== 0;
 
     const probeActive = actions.returnProbeConnectivity();
 
@@ -231,7 +233,7 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
                         </Button>
                     </div>
                     <div className="flex flex-col sm:m-auto sm:mb-4">
-                        {isAutoZeroAdvanced && (
+                        {isCornerSelectable && (
                             <div className="flex justify-center items-center mb-1">
                                 <ProbeDirectionSelection
                                     direction={direction}

@@ -26,8 +26,8 @@ import {
     TOUCHPLATE_TYPE_STANDARD,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_ZERO,
-    TOUCHPLATE_TYPE_3D,
     isAutoZeroFamily,
+    is3DFamily,
 } from 'app/lib/constants';
 import XProbe from './assets/Block-X.gif';
 import YProbe from './assets/Block-Y.gif';
@@ -66,7 +66,7 @@ const ProbeImage: React.FC<Props> = ({
         if (touchplateType === TOUCHPLATE_TYPE_ZERO) {
             return ZOnlyProbe;
         }
-        if (touchplateType === TOUCHPLATE_TYPE_3D) {
+        if (is3DFamily(touchplateType)) {
             if (id === 'X Touch') {
                 return X3D;
             } else if (id === 'Y Touch') {
@@ -76,6 +76,11 @@ const ProbeImage: React.FC<Props> = ({
             } else if (id === 'Z Touch' || id === 'XYZ Touch') {
                 return XYZ3D;
             }
+            // Circle Center has no artwork of its own yet. Fall back to the 3D
+            // XY image, which at least shows the right hardware and the right
+            // axes - without this the generic block below would hand back a
+            // Standard Block picture for a 3D probe.
+            return XY3D;
         }
         if (id === 'X Touch') {
             return XProbe;

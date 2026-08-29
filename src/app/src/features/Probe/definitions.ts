@@ -94,6 +94,16 @@ export interface ProbingOptions {
     plateType: TOUCHPLATE_TYPES_T;
     probeType: PROBE_TYPES_T;
     homingEnabled: boolean;
+    // Identifies routines that need their own G-code rather than being
+    // inferred from `axes` (Circle Center shares {x, y} with "XY Touch").
+    routineId?: string;
+    // Circle Center. These are always in millimetres and must never be unit
+    // converted: the routine forces G21 so that its $13 handling stays sound.
+    circleDiameter?: number;
+    circleMode?: string;
+    circleProbeDepth?: number;
+    probeFastMm?: number;
+    probeSlowMm?: number;
 }
 
 export interface ProbeWidgetSettings {
@@ -123,6 +133,9 @@ export interface Probe {
     direction: number;
     tipDiameter3D: number;
     xyRetract3D: number;
+    circleDiameter: number;
+    circleMode: string;
+    circleProbeDepth: number;
     probeMovementSpeed: number;
 }
 

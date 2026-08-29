@@ -1,10 +1,12 @@
 import {
     PROBE_TYPE_AUTO,
     PROBE_TYPE_TIP,
-    TOUCHPLATE_TYPE_3D,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_ZERO,
     isAutoZeroFamily,
+    is3DFamily,
+    CIRCLE_MODE_BORE,
+    PROBE_ROUTINE_CIRCLE_CENTER,
 } from './constants';
 import { GRBLHAL, METRIC_UNITS } from '../constants';
 import { convertToMetric, mm2in } from './units';
@@ -74,7 +76,7 @@ export const getPreamble = (options: ProbingOptions): Array<string> => {
     let zThickness = zThicknesses.standardBlock;
     if (plateType === TOUCHPLATE_TYPE_ZERO) {
         zThickness = zThicknesses.zProbe;
-    } else if (plateType === TOUCHPLATE_TYPE_3D) {
+    } else if (is3DFamily(plateType)) {
         zThickness = zThicknesses.probe3D;
     }
 
@@ -134,14 +136,14 @@ const updateOptionsForDirection = (
 ): ProbingOptions => {
     const { units, plateType } = options;
     const diameter =
-        plateType === TOUCHPLATE_TYPE_3D
+        is3DFamily(plateType)
             ? options.tipDiameter3D
             : options.toolDiameter;
     const xyThickness =
-        plateType === TOUCHPLATE_TYPE_3D ? 0 : options.xyThickness;
+        is3DFamily(plateType) ? 0 : options.xyThickness;
     options.direction = direction;
     const zThickness =
-        plateType === TOUCHPLATE_TYPE_3D
+        is3DFamily(plateType)
             ? options.zThickness.probe3D
             : options.zThickness.standardBlock;
 
@@ -171,7 +173,7 @@ const updateOptionsForDirection = (
 
     //Via Chris - xyMovement should be xyThickness + retraction distance + tool Radius
     let xyMovement =
-        (plateType === TOUCHPLATE_TYPE_3D ? options.xyRetract3D : xyThickness) +
+        (is3DFamily(plateType) ? options.xyRetract3D : xyThickness) +
         options.retract +
         toolRadius;
     //console.log('xyMovement', xyMovement);
@@ -183,7 +185,7 @@ const updateOptionsForDirection = (
             : Number(mm2in(xyMovement).toFixed(3));*/
 
     // Via Chris - Z adjust should be block thickness + retraction
-    let probe3dOffset = options.plateType === TOUCHPLATE_TYPE_3D ? 5 : 0;
+    let probe3dOffset = is3DFamily(options.plateType) ? 5 : 0;
     probe3dOffset =
         units === METRIC_UNITS
             ? probe3dOffset
@@ -1220,14 +1222,164 @@ export const getNextDirection = (
     return Number(direction) + 1;
 };
 
+/*
+ * Circle Center - find the middle of a round feature and zero XY on it.
+ *
+ * Two opposing walls are touched per axis and the tool is moved back by half
+ * the measured span, so the probe tip radius cancels out entirely and needs no
+ * compensation. Only the CENTRE is meaningful here - the span itself is short
+ * by one tip diameter and is deliberately never reported as a diameter.
+ *
+ * Units: this routine forces G21 and works in millimetres throughout, exactly
+ * like the AutoZero routines. That is what makes the $13 handling below sound:
+ * `posx`/`posy` are reported in the units $13 selects, independent of the modal
+ * units, so with $13=0 (mm) the values already match the forced G21, and with
+ * $13=1 (inches) the centring move is prefixed with G20 to match. The next
+ * motion line re-asserts G21 to undo that excursion. Skipping this is the bug
+ * fixed in d98e8947b for AutoZero, and one the BitZero bore routine still has.
+ * Consequently every circle* option must be supplied in mm, never converted.
+ */
+export const getCircleCenterRoutine = (
+    options: ProbingOptions,
+): Array<string> => {
+    const {
+        $13,
+        firmware,
+        retract = 2,
+        circleDiameter = 15,
+        circleMode = CIRCLE_MODE_BORE,
+        circleProbeDepth = 5,
+        probeFastMm = 150,
+        probeSlowMm = 75,
+    } = options;
+
+    const p = 'P0';
+    const probeDelay = firmware === GRBLHAL ? 0.05 : 0.15;
+    const prependUnits: UNITS_GCODE | '' = $13 === '1' ? 'G20' : '';
+    const isBore = circleMode === CIRCLE_MODE_BORE;
+
+    // Overshoot past the nominal feature size so a slightly off-centre start,
+    // or a diameter entered a little small, still reaches the wall.
+    const MARGIN = 5;
+    const radius = circleDiameter / 2;
+
+    // Bore: probe outward from the middle, then across to the opposite wall.
+    const searchHalf = radius + MARGIN;
+    const searchFull = circleDiameter + MARGIN;
+    // Boss: step outside the part, then probe inward. `reach` is independent of
+    // the diameter because we always end up exactly MARGIN outside the wall.
+    const out = radius + MARGIN;
+    const reach = 2 * MARGIN;
+    const cross = circleDiameter + retract + MARGIN;
+
+    const code: Array<string> = [
+        `; 3D Probe Circle Center - ${isBore ? 'inside bore' : 'outside boss'}, diameter ${circleDiameter}`,
+        `; Instructions: ${
+            isBore
+                ? 'start with the probe inside the hole, near its middle and below the top surface.'
+                : 'start with the probe above the middle of the boss, clear of the top.'
+        }`,
+        `%PROBE_DELAY=${probeDelay}`,
+        `%CIRCLE_FAST=${probeFastMm}`,
+        `%CIRCLE_SLOW=${probeSlowMm}`,
+        `%CIRCLE_RETRACT=${retract}`,
+        `%CIRCLE_RETOUCH=${retract + 1}`,
+        // Only the variables the selected mode actually uses, so the emitted
+        // program stays readable to whoever is watching it run.
+        ...(isBore
+            ? [
+                  `%CIRCLE_SEARCH_HALF=${searchHalf}`,
+                  `%CIRCLE_SEARCH_FULL=${searchFull}`,
+              ]
+            : [
+                  `%CIRCLE_OUT=${out}`,
+                  `%CIRCLE_REACH=${reach}`,
+                  `%CIRCLE_CROSS=${cross}`,
+                  `%CIRCLE_PROBE_DEPTH=${circleProbeDepth}`,
+              ]),
+        'M5',
+        'G21 G91',
+    ];
+
+    // One axis of a bore: probe out to the near wall, cross to the far wall,
+    // then step back by half the span.
+    const boreAxis = (axis: 'X' | 'Y'): Array<string> => [
+        `; ${axis} - inside bore`,
+        `G38.2 ${axis}-[CIRCLE_SEARCH_HALF] F[CIRCLE_FAST]`,
+        'G4 P[PROBE_DELAY]',
+        `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
+        `G38.2 ${axis}-[CIRCLE_RETOUCH] F[CIRCLE_SLOW]`,
+        'G4 P[PROBE_DELAY]',
+        `%${axis}_FIRST=pos${axis.toLowerCase()}`,
+        `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
+        `G38.2 ${axis}[CIRCLE_SEARCH_FULL] F[CIRCLE_FAST]`,
+        'G4 P[PROBE_DELAY]',
+        `G21 G91 G0 ${axis}-[CIRCLE_RETRACT]`,
+        `G38.2 ${axis}[CIRCLE_RETOUCH] F[CIRCLE_SLOW]`,
+        'G4 P[PROBE_DELAY]',
+        `%${axis}_SECOND=pos${axis.toLowerCase()}`,
+        `%${axis}_CENTER=((${axis}_SECOND - ${axis}_FIRST)/2)*-1`,
+        `${prependUnits} G91 G0 ${axis}[${axis}_CENTER]`,
+        // Undo the G20 excursion immediately: the next move after this is a
+        // probe, and leaving the machine in inches would scale it by 25.4.
+        'G21 G91',
+    ];
+
+    // One axis of a boss: step outside, drop beside the wall, probe inward,
+    // then LIFT before crossing - traversing at probing depth would drag the
+    // probe straight through the part.
+    const bossAxis = (axis: 'X' | 'Y'): Array<string> => [
+        `; ${axis} - outside boss`,
+        `G21 G91 G0 ${axis}[CIRCLE_OUT]`,
+        'G21 G91 G0 Z-[CIRCLE_PROBE_DEPTH]',
+        `G38.2 ${axis}-[CIRCLE_REACH] F[CIRCLE_FAST]`,
+        'G4 P[PROBE_DELAY]',
+        `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
+        `G38.2 ${axis}-[CIRCLE_RETOUCH] F[CIRCLE_SLOW]`,
+        'G4 P[PROBE_DELAY]',
+        `%${axis}_FIRST=pos${axis.toLowerCase()}`,
+        `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
+        'G21 G91 G0 Z[CIRCLE_PROBE_DEPTH]',
+        `G21 G91 G0 ${axis}-[CIRCLE_CROSS]`,
+        'G21 G91 G0 Z-[CIRCLE_PROBE_DEPTH]',
+        `G38.2 ${axis}[CIRCLE_REACH] F[CIRCLE_FAST]`,
+        'G4 P[PROBE_DELAY]',
+        `G21 G91 G0 ${axis}-[CIRCLE_RETRACT]`,
+        `G38.2 ${axis}[CIRCLE_RETOUCH] F[CIRCLE_SLOW]`,
+        'G4 P[PROBE_DELAY]',
+        `%${axis}_SECOND=pos${axis.toLowerCase()}`,
+        `G21 G91 G0 ${axis}-[CIRCLE_RETRACT]`,
+        'G21 G91 G0 Z[CIRCLE_PROBE_DEPTH]',
+        `%${axis}_CENTER=((${axis}_SECOND - ${axis}_FIRST)/2)*-1`,
+        `${prependUnits} G91 G0 ${axis}[${axis}_CENTER]`,
+        'G21 G91',
+    ];
+
+    const axisCode = isBore ? boreAxis : bossAxis;
+    code.push(...axisCode('X'), ...axisCode('Y'));
+
+    // Zero XY on the located centre. Z is deliberately untouched - Circle
+    // Center only establishes XY.
+    code.push(`G21 G10 L20 ${p} X0 Y0`, 'G4 P[PROBE_DELAY]');
+
+    return code;
+};
+
 // Master function - given selected routine, determine which probe code to return for a specific direction
 export const getProbeCode = (
     options: ProbingOptions,
     direction: PROBE_DIRECTIONS = 0,
 ): Array<string> => {
-    const { plateType, axes, probeType } = options;
+    const { plateType, axes, probeType, routineId } = options;
 
     //let axesCount = Object.values(axes).reduce((a, item) => a + item, 0);
+
+    // Circle Center has to be matched on its routine id, not on axes: it uses
+    // the same {x, y} axes as "XY Touch", so dispatching on axes alone would
+    // silently run a bore cycle when the operator asked for a corner touch.
+    if (routineId === PROBE_ROUTINE_CIRCLE_CENTER) {
+        return getCircleCenterRoutine(options);
+    }
 
     // Both AutoZero variants share the same plate and the same routines - only
     // the corner selector in the UI differs, and that arrives here as `direction`.
