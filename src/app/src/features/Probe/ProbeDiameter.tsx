@@ -33,11 +33,11 @@ import cx from 'classnames';
 import { X, Plus, ChevronDown } from 'lucide-react';
 
 import {
-    TOUCHPLATE_TYPE_AUTOZERO,
     TOUCHPLATE_TYPE_BITZERO,
     PROBE_TYPE_AUTO,
     PROBE_TYPE_TIP,
     PROBE_TYPE_DIAMETER,
+    isAutoZeroFamily,
 } from 'app/lib/constants';
 import { UNITS_EN } from 'app/definitions/general';
 import {
@@ -130,7 +130,10 @@ const ProbeDiameter = ({ actions, state, probeCommand }: Props) => {
         const baseOptions: Option[] = [];
         const toolsObjects = convertAvailableTools(availableTools, units);
 
-        if (touchplateType === TOUCHPLATE_TYPE_AUTOZERO || touchplateType === TOUCHPLATE_TYPE_BITZERO) {
+        if (
+            isAutoZeroFamily(touchplateType) ||
+            touchplateType === TOUCHPLATE_TYPE_BITZERO
+        ) {
             baseOptions.push(
                 { value: PROBE_TYPE_AUTO, label: PROBE_TYPE_AUTO, tool: null },
                 { value: PROBE_TYPE_TIP, label: PROBE_TYPE_TIP, tool: null },

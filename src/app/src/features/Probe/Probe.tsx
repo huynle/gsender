@@ -36,11 +36,15 @@ import {
 import { METRIC_UNITS, PROBING_CATEGORY } from '../../constants';
 import ProbeImage from './ProbeImage';
 import ProbeDiameter from './ProbeDiameter';
+import ProbeDirectionSelection from './ProbeDirectionSelection';
 import { Actions, State } from './definitions';
 import useKeybinding from 'app/lib/useKeybinding';
 import useShuttleEvents from 'app/hooks/useShuttleEvents';
 import Tooltip from 'app/components/Tooltip';
-import { TOUCHPLATE_TYPES } from 'app/lib/constants';
+import {
+    TOUCHPLATE_TYPES,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+} from 'app/lib/constants';
 
 type ProbeProps = {
     state: State;
@@ -125,6 +129,7 @@ const Probe = ({ state, actions }: ProbeProps) => {
         selectedProbeCommand,
         touchplate,
         touchplateTypeSwitcher,
+        direction,
     } = state;
 
     const { touchplateType } = touchplate;
@@ -132,7 +137,10 @@ const Probe = ({ state, actions }: ProbeProps) => {
     const probeCommand = availableProbeCommands[selectedProbeCommand];
 
     return (
-        <div className="w-full h-full max-xl:pt-1">
+        // `relative` anchors the absolutely-positioned corner selector below to
+        // this widget. Without it the selector escapes to whatever positioned
+        // ancestor happens to exist further up the tree.
+        <div className="relative w-full h-full max-xl:pt-1">
             <div className="grid grid-cols-[5fr_3fr] w-full h-full max-xl:max-h-[144px]">
                 {/* <div className="w-full h-full m-auto grid gap-4">
                     <div className="h-full grid grid-rows[4fr_2fr] self-center gap-2"> */}
@@ -209,6 +217,12 @@ const Probe = ({ state, actions }: ProbeProps) => {
                     />
                 </div>
             </div>
+            {touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED && (
+                <ProbeDirectionSelection
+                    direction={direction}
+                    onClick={actions.nextProbeDirection}
+                />
+            )}
         </div>
     );
 };

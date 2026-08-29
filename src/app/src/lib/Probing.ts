@@ -2,9 +2,9 @@ import {
     PROBE_TYPE_AUTO,
     PROBE_TYPE_TIP,
     TOUCHPLATE_TYPE_3D,
-    TOUCHPLATE_TYPE_AUTOZERO,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_ZERO,
+    isAutoZeroFamily,
 } from './constants';
 import { GRBLHAL, METRIC_UNITS } from '../constants';
 import { convertToMetric, mm2in } from './units';
@@ -1229,7 +1229,9 @@ export const getProbeCode = (
 
     //let axesCount = Object.values(axes).reduce((a, item) => a + item, 0);
 
-    if (plateType === TOUCHPLATE_TYPE_AUTOZERO) {
+    // Both AutoZero variants share the same plate and the same routines - only
+    // the corner selector in the UI differs, and that arrives here as `direction`.
+    if (isAutoZeroFamily(plateType)) {
         if (probeType === PROBE_TYPE_AUTO) {
             return get3AxisAutoRoutine({
                 ...options,

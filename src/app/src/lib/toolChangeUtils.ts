@@ -3,9 +3,9 @@ import store from '../store';
 import { store as reduxStore } from '../store/redux';
 import {
     TOUCHPLATE_TYPE_3D,
-    TOUCHPLATE_TYPE_AUTOZERO,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_ZERO,
+    isAutoZeroFamily,
 } from '../lib/constants';
 import { UNITS_GCODE } from 'app/definitions/general';
 import {
@@ -27,7 +27,7 @@ export const getProbeSettings = (): ProbeWidgetSettings => {
     );
 
     let probeThickness = probeProfile.zThickness.standardBlock;
-    if (touchplateType === TOUCHPLATE_TYPE_AUTOZERO) {
+    if (isAutoZeroFamily(touchplateType)) {
         probeThickness = probeProfile.zThickness.autoZero;
     } else if (touchplateType === TOUCHPLATE_TYPE_ZERO) {
         probeThickness = probeProfile.zThickness.zProbe;

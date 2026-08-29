@@ -27,12 +27,13 @@ import { usePostHog } from '@posthog/react';
 // import Space from 'app/components/Space';
 import controller from 'app/lib/controller';
 import {
-    TOUCHPLATE_TYPE_AUTOZERO,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     PROBE_TYPE_AUTO,
     TOUCHPLATE_TYPE_ZERO,
     PROBE_TYPE_DIAMETER,
     TOUCHPLATE_TYPE_3D,
     PROBE_TYPE_TIP,
+    isAutoZeroFamily,
 } from 'app/lib/constants';
 import store from 'app/store';
 import { convertToImperial } from 'app/lib/units';
@@ -166,7 +167,7 @@ const ProbeWidget = () => {
 
     const calcProbeType = (): PROBE_TYPES_T => {
         let probeType: PROBE_TYPES_T;
-        if (touchplateType === TOUCHPLATE_TYPE_AUTOZERO) {
+        if (isAutoZeroFamily(touchplateType)) {
             probeType = PROBE_TYPE_AUTO;
         } else {
             probeType = PROBE_TYPE_DIAMETER;
@@ -579,13 +580,27 @@ const ProbeWidget = () => {
                 if (probeProfile.touchplateType === TOUCHPLATE_TYPE_ZERO) {
                     actions.handleProbeCommandChange(0);
                 }
+
+                // Only AutoZero Advanced exposes the corner selector. Force the
+                // corner back to the default bottom-left for every other plate so
+                // a corner chosen in Advanced can never silently carry over and
+                // offset the zero by ~45mm on a plate with no way to see it.
+                if (
+                    probeProfile.touchplateType !==
+                    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED
+                ) {
+                    setDirection(0);
+                }
             }
 
-            // if we are switching from auto zero to another plate, make sure the probe type changes to diameter
+            // If we are switching from an AutoZero plate to another plate, make
+            // sure the probe type changes to diameter. Switching BETWEEN the two
+            // AutoZero variants is not a plate change - it is the same physical
+            // plate - so the Auto/Tip probe type must be preserved there.
             if (
                 probeProfile &&
-                touchplateType !== probeProfile.touchplateType &&
-                touchplateType === TOUCHPLATE_TYPE_AUTOZERO &&
+                isAutoZeroFamily(touchplateType) &&
+                !isAutoZeroFamily(probeProfile.touchplateType) &&
                 toolDiameter === 0
             ) {
                 setProbeType(PROBE_TYPE_DIAMETER);

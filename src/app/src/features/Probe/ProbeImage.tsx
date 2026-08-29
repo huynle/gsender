@@ -24,10 +24,10 @@
 import React from 'react';
 import {
     TOUCHPLATE_TYPE_STANDARD,
-    TOUCHPLATE_TYPE_AUTOZERO,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_ZERO,
     TOUCHPLATE_TYPE_3D,
+    isAutoZeroFamily,
 } from 'app/lib/constants';
 import XProbe from './assets/Block-X.gif';
 import YProbe from './assets/Block-Y.gif';
@@ -54,7 +54,10 @@ const ProbeImage: React.FC<Props> = ({
 }) => {
     const getProbeImage = () => {
         const { id } = probeCommand;
-        if (touchplateType === TOUCHPLATE_TYPE_AUTOZERO || touchplateType === TOUCHPLATE_TYPE_BITZERO) {
+        if (
+            isAutoZeroFamily(touchplateType) ||
+            touchplateType === TOUCHPLATE_TYPE_BITZERO
+        ) {
             if (id === 'Z Touch') {
                 return AutoZProbe;
             }

@@ -17,9 +17,11 @@ import { IconType } from 'react-icons';
 import {
     TOUCHPLATE_TYPE_3D,
     TOUCHPLATE_TYPE_AUTOZERO,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     TOUCHPLATE_TYPE_BITZERO,
     TOUCHPLATE_TYPE_STANDARD,
     TOUCHPLATE_TYPE_ZERO,
+    isAutoZeroFamily,
 } from 'app/lib/constants';
 import { AJogWizard } from 'app/features/Config/components/wizards/AJogWizard.tsx';
 import { ProbePinStatus } from 'app/features/Config/components/wizards/ProbePinStatus.tsx';
@@ -641,10 +643,11 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         key: 'workspace.probeProfile.touchplateType',
                         type: 'select',
                         description:
-                            "Select the touch plate you're using with your machine. (Default Standard block)",
+                            "Select the touch plate you're using with your machine. \"AutoZero Advanced\" is the same plate as \"AutoZero\" but lets you pick which corner you're probing. (Default Standard block)",
                         options: [
                             TOUCHPLATE_TYPE_STANDARD,
                             TOUCHPLATE_TYPE_AUTOZERO,
+                            TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
                             TOUCHPLATE_TYPE_ZERO,
                             TOUCHPLATE_TYPE_3D,
                             TOUCHPLATE_TYPE_BITZERO,
@@ -701,8 +704,10 @@ export const SettingsMenu: SettingsMenuSection[] = [
                                 'workspace.probeProfile.touchplateType',
                                 '',
                             );
-                            // Hidden if we are not using AutoZero touchplate
-                            return probeType !== TOUCHPLATE_TYPE_AUTOZERO;
+                            // Hidden if we are not using an AutoZero touchplate.
+                            // Both AutoZero variants are the same physical plate
+                            // and therefore share this thickness value.
+                            return !isAutoZeroFamily(probeType);
                         },
                     },
                     {
@@ -817,7 +822,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             );
                             // Hidden if we are using AutoZero or BitZero touchplate
                             return (
-                                probeType === TOUCHPLATE_TYPE_AUTOZERO ||
+                                isAutoZeroFamily(probeType) ||
                                 probeType === TOUCHPLATE_TYPE_BITZERO
                             );
                         },
@@ -836,7 +841,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             );
                             // Hidden if we are using AutoZero or BitZero touchplate
                             return (
-                                probeType === TOUCHPLATE_TYPE_AUTOZERO ||
+                                isAutoZeroFamily(probeType) ||
                                 probeType === TOUCHPLATE_TYPE_BITZERO
                             );
                         },
@@ -855,7 +860,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             );
                             // Hidden if we are using AutoZero or BitZero touchplate
                             return (
-                                probeType === TOUCHPLATE_TYPE_AUTOZERO ||
+                                isAutoZeroFamily(probeType) ||
                                 probeType === TOUCHPLATE_TYPE_BITZERO
                             );
                         },
@@ -874,7 +879,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             );
                             // Hidden if we are using AutoZero or BitZero touchplate
                             return (
-                                probeType === TOUCHPLATE_TYPE_AUTOZERO ||
+                                isAutoZeroFamily(probeType) ||
                                 probeType === TOUCHPLATE_TYPE_BITZERO
                             );
                         },
@@ -911,7 +916,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             );
                             // Hidden if we are using AutoZero or BitZero touchplate
                             return (
-                                probeType === TOUCHPLATE_TYPE_AUTOZERO ||
+                                isAutoZeroFamily(probeType) ||
                                 probeType === TOUCHPLATE_TYPE_BITZERO
                             );
                         },
@@ -929,8 +934,10 @@ export const SettingsMenu: SettingsMenuSection[] = [
                                 'workspace.probeProfile.touchplateType',
                                 '',
                             );
-                            // Hidden if we are using AutoZero or BitZero touchplate
-                            return probeType !== TOUCHPLATE_TYPE_AUTOZERO;
+                            // This is the AutoZero-specific retract; it is shown
+                            // ONLY for the AutoZero plates (both variants), which
+                            // are the routines that actually consume it.
+                            return !isAutoZeroFamily(probeType);
                         },
                     },
                     {
