@@ -45,6 +45,7 @@ import {
     TOUCHPLATE_TYPES,
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     TOUCHPLATE_TYPE_3D_ADVANCED,
+    routineUsesCorner,
 } from 'app/lib/constants';
 
 type ProbeProps = {
@@ -219,7 +220,8 @@ const Probe = ({ state, actions }: ProbeProps) => {
                 </div>
             </div>
             {(touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED ||
-                touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED) && (
+                touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED) &&
+                routineUsesCorner(probeCommand?.id) && (
                 <ProbeDirectionSelection
                     direction={direction}
                     onClick={actions.nextProbeDirection}

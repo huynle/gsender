@@ -27,6 +27,7 @@ import {
     CIRCLE_MODE_BORE,
     CIRCLE_MODE_BOSS,
     PROBE_ROUTINE_CIRCLE_CENTER,
+    routineUsesCorner,
 } from 'app/lib/constants';
 import type { ProbingOptions } from '../definitions';
 
@@ -85,6 +86,27 @@ describe('is3DFamily', () => {
         expect(is3DFamily(TOUCHPLATE_TYPE_BITZERO)).toBe(false);
         expect(is3DFamily('')).toBe(false);
         expect(is3DFamily(undefined as unknown as string)).toBe(false);
+    });
+});
+
+describe('routineUsesCorner', () => {
+    // Circle Center zeroes on a computed centre and ignores `direction`
+    // entirely, so offering a corner alongside it is misleading - it implies a
+    // choice that has no effect on the resulting zero.
+    it('is false for Circle Center', () => {
+        expect(routineUsesCorner(PROBE_ROUTINE_CIRCLE_CENTER)).toBe(false);
+    });
+
+    it('is true for the corner touch-off routines', () => {
+        ['XYZ Touch', 'XY Touch', 'X Touch', 'Y Touch', 'Z Touch'].forEach(
+            (id) => {
+                expect(routineUsesCorner(id)).toBe(true);
+            },
+        );
+    });
+
+    it('defaults to true when the routine is unknown', () => {
+        expect(routineUsesCorner(undefined)).toBe(true);
     });
 });
 
@@ -188,6 +210,21 @@ describe('Circle Center - shared behaviour', () => {
             expect(code).toMatch(/%Y_CENTER=\(\(Y_SECOND - Y_FIRST\)\/2\)\*-1/);
             // An absolute move computed from posx is the BitZero $13 bug.
             expect(code).not.toMatch(/G90 G[01] X\[\(X/);
+        },
+    );
+
+    it.each([CIRCLE_MODE_BORE, CIRCLE_MODE_BOSS])(
+        'produces the same G-code for every corner in %s mode',
+        (circleMode) => {
+            // This is why the corner picker is hidden for Circle Center: the
+            // corner cannot change the outcome, so showing it would imply a
+            // choice that does nothing.
+            const base = getProbeCode(circleOptions({ circleMode }), 0);
+            ([1, 2, 3] as const).forEach((direction) => {
+                expect(
+                    getProbeCode(circleOptions({ circleMode }), direction),
+                ).toEqual(base);
+            });
         },
     );
 

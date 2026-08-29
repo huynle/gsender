@@ -711,10 +711,9 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         label: 'Circle diameter',
                         key: 'widgets.probe.circleDiameter',
                         description:
-                            'Approximate size of the hole or round part, used to bound how far Circle Center searches for each wall. Always in mm. (Default 15)',
+                            'Approximate size of the hole or round part, used to bound how far Circle Center searches for each wall. Shown in your display units. (Default 15mm)',
                         type: 'number',
-                        unit: 'mm',
-                        min: 1,
+                        unit: 'variable',
                         hidden: (getPending) => {
                             const probeType = getPending(
                                 'workspace.probeProfile.touchplateType',
@@ -727,10 +726,9 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         label: 'Circle probe depth',
                         key: 'widgets.probe.circleProbeDepth',
                         description:
-                            'How far below the starting height to drop before probing the side of a round part. Outside boss mode only. Always in mm. (Default 5)',
+                            'How far below the starting height to drop before probing the side of a round part. Outside boss mode only. Shown in your display units. (Default 5mm)',
                         type: 'number',
-                        unit: 'mm',
-                        min: 1,
+                        unit: 'variable',
                         hidden: (getPending) => {
                             const probeType = getPending(
                                 'workspace.probeProfile.touchplateType',

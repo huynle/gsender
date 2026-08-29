@@ -93,6 +93,16 @@ export const CIRCLE_MODES = {
  */
 export const PROBE_ROUTINE_CIRCLE_CENTER = 'Circle Center';
 
+/*
+ * Which corner of the stock you are on matters for the touch-off routines,
+ * because it decides the direction the probe travels and the sign of the
+ * offsets. Circle Center derives its zero from the midpoint of two opposing
+ * walls instead, so `direction` never reaches its G-code. Offering a corner
+ * next to it implies a choice that has no effect on the resulting zero.
+ */
+export const routineUsesCorner = (routineId?: string): boolean =>
+    routineId !== PROBE_ROUTINE_CIRCLE_CENTER;
+
 export const PROBE_TYPE_AUTO = 'Auto';
 export const PROBE_TYPE_TIP = 'Tip';
 export const PROBE_TYPE_DIAMETER = 'Diameter';

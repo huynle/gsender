@@ -45,6 +45,7 @@ import {
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     TOUCHPLATE_TYPE_3D_ADVANCED,
     is3DFamily,
+    routineUsesCorner,
     CIRCLE_MODE_BOSS,
     PROBE_ROUTINE_CIRCLE_CENTER,
 } from 'app/lib/constants';
@@ -149,9 +150,12 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
     //console.log(probeCommands.length);
     const probeCommand = availableProbeCommands[selectedProbeCommand];
     const is3DProbe = is3DFamily(touchplateType);
+    // Circle Center ignores the corner entirely, so neither the picker nor the
+    // corner warning belong on screen when it is the selected routine.
     const isCornerSelectable =
-        touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED ||
-        touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED;
+        (touchplateType === TOUCHPLATE_TYPE_AUTOZERO_ADVANCED ||
+            touchplateType === TOUCHPLATE_TYPE_3D_ADVANCED) &&
+        routineUsesCorner(probeCommand?.id);
     const directionLabels = [
         'Bottom Left',
         'Top Left',
