@@ -182,6 +182,8 @@ export interface State {
     availableTools: AvailableTool[];
     units: UNITS_EN;
     direction: number;
+    circleMode: string;
+    circleDiameter: number;
     probeType: PROBE_TYPES_T;
     connectivityTest: boolean;
 }

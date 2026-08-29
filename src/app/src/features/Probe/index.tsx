@@ -701,6 +701,8 @@ const ProbeWidget = () => {
         availableTools: availableTools,
         units: units,
         direction: direction,
+        circleMode,
+        circleDiameter,
         probeType: probeType,
         connectivityTest: connectivityTest,
     };

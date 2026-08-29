@@ -45,6 +45,8 @@ import {
     TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
     TOUCHPLATE_TYPE_3D_ADVANCED,
     is3DFamily,
+    CIRCLE_MODE_BOSS,
+    PROBE_ROUTINE_CIRCLE_CENTER,
 } from 'app/lib/constants';
 
 interface RunProbeProps {
@@ -69,6 +71,8 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
         touchplate,
         connectivityTest,
         direction,
+        circleMode,
+        circleDiameter,
     } = state;
     const { probePinStatus } = useTypedSelector((state) => ({
         probePinStatus: state.controller.state.status?.pinState.P ?? false,
@@ -159,6 +163,13 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
     // the zero by ~45mm, so call it out explicitly before the routine starts.
     const showDirectionWarning = isCornerSelectable && direction !== 0;
 
+    // Circle Center's two modes drive completely different motion - one starts
+    // inside a hole, the other steps around the outside of a part - and the
+    // mode lives in settings rather than on this screen. State it plainly here,
+    // because running boss motion on a bore (or the reverse) crashes the probe.
+    const isCircleCenter = probeCommand?.id === PROBE_ROUTINE_CIRCLE_CENTER;
+    const circleIsBore = circleMode !== CIRCLE_MODE_BOSS;
+
     const probeActive = actions.returnProbeConnectivity();
 
     return (
@@ -201,6 +212,27 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
                                         <div>
                                             Verify this is correct before
                                             starting.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {isCircleCenter && (
+                                <div
+                                    className="flex items-center p-4 text-sm text-blue-800 border border-blue-300 rounded-lg bg-blue-50 w-full mb-3"
+                                    role="status"
+                                >
+                                    <div>
+                                        <span className="font-medium">
+                                            Circle Center -{' '}
+                                            {circleIsBore
+                                                ? 'inside bore'
+                                                : 'outside boss'}
+                                            , {circleDiameter}mm
+                                        </span>
+                                        <div>
+                                            {circleIsBore
+                                                ? 'Start with the probe inside the hole, near its middle and below the top surface.'
+                                                : 'Start with the probe above the middle of the part, clear of the top. It will step outside, drop and probe inward.'}
                                         </div>
                                     </div>
                                 </div>
