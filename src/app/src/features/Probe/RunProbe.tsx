@@ -46,8 +46,8 @@ import {
     TOUCHPLATE_TYPE_3D_ADVANCED,
     is3DFamily,
     routineUsesCorner,
-    CIRCLE_MODE_BOSS,
-    PROBE_ROUTINE_CIRCLE_CENTER,
+    PROBE_ROUTINE_BOSS_CENTER,
+    isCentreFindingRoutine,
 } from 'app/lib/constants';
 
 interface RunProbeProps {
@@ -72,7 +72,6 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
         touchplate,
         connectivityTest,
         direction,
-        circleMode,
         circleDiameter,
     } = state;
     const { probePinStatus } = useTypedSelector((state) => ({
@@ -171,8 +170,8 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
     // inside a hole, the other steps around the outside of a part - and the
     // mode lives in settings rather than on this screen. State it plainly here,
     // because running boss motion on a bore (or the reverse) crashes the probe.
-    const isCircleCenter = probeCommand?.id === PROBE_ROUTINE_CIRCLE_CENTER;
-    const circleIsBore = circleMode !== CIRCLE_MODE_BOSS;
+    const isCircleCenter = isCentreFindingRoutine(probeCommand?.id);
+    const circleIsBore = probeCommand?.id !== PROBE_ROUTINE_BOSS_CENTER;
 
     const probeActive = actions.returnProbeConnectivity();
 
@@ -227,7 +226,7 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
                                 >
                                     <div>
                                         <span className="font-medium">
-                                            Circle Center -{' '}
+                                            {circleIsBore ? 'Bore' : 'Boss'} Center -{' '}
                                             {circleIsBore
                                                 ? 'inside bore'
                                                 : 'outside boss'}

@@ -87,11 +87,22 @@ export const CIRCLE_MODES = {
 };
 
 /*
- * getProbeCode dispatches on plate type and axes alone, and Circle Center's
- * axes ({x, y}) collide with the plain "XY Touch" routine. Routines that need
- * their own G-code therefore carry an explicit id.
+ * getProbeCode dispatches on plate type and axes alone, and the centre-finding
+ * routines' axes ({x, y}) collide with the plain "XY Touch" routine. Routines
+ * that need their own G-code therefore carry an explicit id.
+ *
+ * Bore and boss are two separate routines rather than one routine with a mode
+ * setting. They drive very different motion - one starts inside a hole, the
+ * other steps around the outside of a part - so each gets its own button. The
+ * probe buttons label themselves from the first word of the id, giving "Bore"
+ * and "Boss".
  */
-export const PROBE_ROUTINE_CIRCLE_CENTER = 'Circle Center';
+export const PROBE_ROUTINE_BORE_CENTER = 'Bore Center';
+export const PROBE_ROUTINE_BOSS_CENTER = 'Boss Center';
+
+export const isCentreFindingRoutine = (routineId?: string): boolean =>
+    routineId === PROBE_ROUTINE_BORE_CENTER ||
+    routineId === PROBE_ROUTINE_BOSS_CENTER;
 
 /*
  * Which corner of the stock you are on matters for the touch-off routines,
@@ -101,7 +112,7 @@ export const PROBE_ROUTINE_CIRCLE_CENTER = 'Circle Center';
  * next to it implies a choice that has no effect on the resulting zero.
  */
 export const routineUsesCorner = (routineId?: string): boolean =>
-    routineId !== PROBE_ROUTINE_CIRCLE_CENTER;
+    !isCentreFindingRoutine(routineId);
 
 export const PROBE_TYPE_AUTO = 'Auto';
 export const PROBE_TYPE_TIP = 'Tip';

@@ -26,7 +26,8 @@ import {
     PROBE_TYPE_DIAMETER,
     CIRCLE_MODE_BORE,
     CIRCLE_MODE_BOSS,
-    PROBE_ROUTINE_CIRCLE_CENTER,
+    PROBE_ROUTINE_BORE_CENTER,
+    PROBE_ROUTINE_BOSS_CENTER,
     routineUsesCorner,
 } from 'app/lib/constants';
 import type { ProbingOptions } from '../definitions';
@@ -67,12 +68,20 @@ const baseOptions = (overrides: Partial<ProbingOptions> = {}): ProbingOptions =>
         ...overrides,
     }) as ProbingOptions;
 
-const circleOptions = (overrides: Partial<ProbingOptions> = {}) =>
-    baseOptions({
-        routineId: PROBE_ROUTINE_CIRCLE_CENTER,
+// The routine id is what selects bore vs boss - there is a button for each.
+const routineForMode = (mode: string) =>
+    mode === CIRCLE_MODE_BOSS
+        ? PROBE_ROUTINE_BOSS_CENTER
+        : PROBE_ROUTINE_BORE_CENTER;
+
+const circleOptions = (overrides: Partial<ProbingOptions> = {}) => {
+    const mode = (overrides.circleMode as string) ?? CIRCLE_MODE_BORE;
+    return baseOptions({
         axes: { x: true, y: true, z: false },
         ...overrides,
+        routineId: overrides.routineId ?? routineForMode(mode),
     });
+};
 
 describe('is3DFamily', () => {
     it('matches both 3D probe variants', () => {
@@ -93,8 +102,9 @@ describe('routineUsesCorner', () => {
     // Circle Center zeroes on a computed centre and ignores `direction`
     // entirely, so offering a corner alongside it is misleading - it implies a
     // choice that has no effect on the resulting zero.
-    it('is false for Circle Center', () => {
-        expect(routineUsesCorner(PROBE_ROUTINE_CIRCLE_CENTER)).toBe(false);
+    it('is false for both centre-finding routines', () => {
+        expect(routineUsesCorner(PROBE_ROUTINE_BORE_CENTER)).toBe(false);
+        expect(routineUsesCorner(PROBE_ROUTINE_BOSS_CENTER)).toBe(false);
     });
 
     it('is true for the corner touch-off routines', () => {
@@ -165,6 +175,41 @@ describe('3D Probe Advanced standard routines', () => {
     });
 });
 
+describe('bore and boss are separate, selectable routines', () => {
+    // They were once a single "Circle" button whose behaviour was decided by a
+    // setting three screens away, which made the boss cycle undiscoverable.
+    it('have distinct ids that render as distinct button labels', () => {
+        expect(PROBE_ROUTINE_BORE_CENTER).toBe('Bore Center');
+        expect(PROBE_ROUTINE_BOSS_CENTER).toBe('Boss Center');
+        // The routine buttons show the first word of the id.
+        expect(PROBE_ROUTINE_BORE_CENTER.split(' ')[0]).toBe('Bore');
+        expect(PROBE_ROUTINE_BOSS_CENTER.split(' ')[0]).toBe('Boss');
+    });
+
+    it('select their cycle from the routine id alone, with no mode setting', () => {
+        const bore = getProbeCode(
+            baseOptions({
+                axes: { x: true, y: true, z: false },
+                routineId: PROBE_ROUTINE_BORE_CENTER,
+                circleMode: undefined,
+            }),
+            0,
+        ).join('\n');
+        const boss = getProbeCode(
+            baseOptions({
+                axes: { x: true, y: true, z: false },
+                routineId: PROBE_ROUTINE_BOSS_CENTER,
+                circleMode: undefined,
+            }),
+            0,
+        ).join('\n');
+        expect(bore).toContain('inside bore');
+        expect(boss).toContain('outside boss');
+        expect(bore).not.toContain('outside boss');
+        expect(boss).not.toContain('inside bore');
+    });
+});
+
 describe('Circle Center - shared behaviour', () => {
     it('is only reachable through the Circle Center routine id', () => {
         // Without the routine id the same axes must still mean "XY Touch",
@@ -174,6 +219,7 @@ describe('Circle Center - shared behaviour', () => {
             0,
         ).join('\n');
         expect(xyTouch).not.toContain('Circle Center');
+        expect(xyTouch).not.toContain('inside bore');
         expect(xyTouch).toContain('; Initial Probe setup');
     });
 
@@ -302,7 +348,8 @@ describe('Circle Center - inside bore', () => {
             circleOptions({ circleDiameter: 20 }),
             0,
         ).join('\n');
-        expect(code).toContain('Circle Center');
+        // The header names the routine the operator actually pressed.
+        expect(code).toContain('Bore Center');
         expect(code).toContain('inside bore');
         expect(code).toContain('20');
     });

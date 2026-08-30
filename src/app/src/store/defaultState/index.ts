@@ -341,7 +341,6 @@ const defaultState: State = {
             // Circle Center (3D Probe Advanced). Millimetres, like the
             // other probe dimensions above.
             circleDiameter: 15,
-            circleMode: 'Inside bore',
             circleProbeDepth: 5,
             probeMovementSpeed: 0,
         },

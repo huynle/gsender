@@ -6,7 +6,9 @@ import {
     isAutoZeroFamily,
     is3DFamily,
     CIRCLE_MODE_BORE,
-    PROBE_ROUTINE_CIRCLE_CENTER,
+    CIRCLE_MODE_BOSS,
+    PROBE_ROUTINE_BOSS_CENTER,
+    isCentreFindingRoutine,
 } from './constants';
 import { GRBLHAL, METRIC_UNITS } from '../constants';
 import { convertToMetric, mm2in } from './units';
@@ -1276,7 +1278,7 @@ export const getCircleCenterRoutine = (
     const cross = circleDiameter + retract + MARGIN;
 
     const code: Array<string> = [
-        `; 3D Probe Circle Center - ${isBore ? 'inside bore' : 'outside boss'}, diameter ${circleDiameter}`,
+        `; 3D Probe ${isBore ? 'Bore' : 'Boss'} Center - ${isBore ? 'inside bore' : 'outside boss'}, diameter ${circleDiameter}`,
         `; Instructions: ${
             isBore
                 ? 'start with the probe inside the hole, near its middle and below the top surface.'
@@ -1387,11 +1389,19 @@ export const getProbeCode = (
 
     //let axesCount = Object.values(axes).reduce((a, item) => a + item, 0);
 
-    // Circle Center has to be matched on its routine id, not on axes: it uses
-    // the same {x, y} axes as "XY Touch", so dispatching on axes alone would
-    // silently run a bore cycle when the operator asked for a corner touch.
-    if (routineId === PROBE_ROUTINE_CIRCLE_CENTER) {
-        return getCircleCenterRoutine(options);
+    // The centre-finding routines have to be matched on their routine id, not
+    // on axes: they use the same {x, y} axes as "XY Touch", so dispatching on
+    // axes alone would silently run a bore cycle when the operator asked for a
+    // corner touch. The id is also what picks bore vs boss - there is a button
+    // for each, so no separate mode setting is involved.
+    if (isCentreFindingRoutine(routineId)) {
+        return getCircleCenterRoutine({
+            ...options,
+            circleMode:
+                routineId === PROBE_ROUTINE_BOSS_CENTER
+                    ? CIRCLE_MODE_BOSS
+                    : CIRCLE_MODE_BORE,
+        });
     }
 
     // Both AutoZero variants share the same plate and the same routines - only

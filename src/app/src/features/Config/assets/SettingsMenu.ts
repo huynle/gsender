@@ -24,8 +24,6 @@ import {
     TOUCHPLATE_TYPE_ZERO,
     isAutoZeroFamily,
     is3DFamily,
-    CIRCLE_MODE_BORE,
-    CIRCLE_MODE_BOSS,
 } from 'app/lib/constants';
 import { AJogWizard } from 'app/features/Config/components/wizards/AJogWizard.tsx';
 import { ProbePinStatus } from 'app/features/Config/components/wizards/ProbePinStatus.tsx';
@@ -655,7 +653,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         key: 'workspace.probeProfile.touchplateType',
                         type: 'select',
                         description:
-                            "Select the touch plate you're using with your machine. \"AutoZero Advanced\" and \"3D Probe Advanced\" are the same hardware as their plain counterparts, but let you pick which corner you're probing; 3D Probe Advanced also adds Circle Center. (Default Standard block)",
+                            "Select the touch plate you're using with your machine. \"AutoZero Advanced\" and \"3D Probe Advanced\" are the same hardware as their plain counterparts, but let you pick which corner you're probing; 3D Probe Advanced also adds Bore and Boss centre finding. (Default Standard block)",
                         options: [
                             TOUCHPLATE_TYPE_STANDARD,
                             TOUCHPLATE_TYPE_AUTOZERO,
@@ -692,26 +690,10 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         },
                     },
                     {
-                        label: 'Circle mode',
-                        key: 'widgets.probe.circleMode',
-                        type: 'select',
-                        description:
-                            'What Circle Center probes: the inside of a hole, or the outside of a round part. (Default Inside bore)',
-                        options: [CIRCLE_MODE_BORE, CIRCLE_MODE_BOSS],
-                        hidden: (getPending) => {
-                            const probeType = getPending(
-                                'workspace.probeProfile.touchplateType',
-                                '',
-                            );
-                            // Circle Center only exists on 3D Probe Advanced.
-                            return probeType !== TOUCHPLATE_TYPE_3D_ADVANCED;
-                        },
-                    },
-                    {
                         label: 'Circle diameter',
                         key: 'widgets.probe.circleDiameter',
                         description:
-                            'Approximate size of the hole or round part, used to bound how far Circle Center searches for each wall. Shown in your display units. (Default 15mm)',
+                            'Approximate size of the hole or round part, used to bound how far the Bore and Boss Center routines search for each wall. Shown in your display units. (Default 15mm)',
                         type: 'number',
                         unit: 'variable',
                         hidden: (getPending) => {
@@ -734,15 +716,8 @@ export const SettingsMenu: SettingsMenuSection[] = [
                                 'workspace.probeProfile.touchplateType',
                                 '',
                             );
-                            const mode = getPending(
-                                'widgets.probe.circleMode',
-                                CIRCLE_MODE_BORE,
-                            );
-                            // Only meaningful when probing the outside of a boss.
-                            return (
-                                probeType !== TOUCHPLATE_TYPE_3D_ADVANCED ||
-                                mode !== CIRCLE_MODE_BOSS
-                            );
+                            // Used by the Boss Center routine.
+                            return probeType !== TOUCHPLATE_TYPE_3D_ADVANCED;
                         },
                     },
                     {

@@ -100,6 +100,8 @@ export interface ProbingOptions {
     // Circle Center. These are always in millimetres and must never be unit
     // converted: the routine forces G21 so that its $13 handling stays sound.
     circleDiameter?: number;
+    // Set internally by getProbeCode from the routine id (Bore/Boss Center);
+    // it is not a user setting.
     circleMode?: string;
     circleProbeDepth?: number;
     probeFastMm?: number;
@@ -134,7 +136,6 @@ export interface Probe {
     tipDiameter3D: number;
     xyRetract3D: number;
     circleDiameter: number;
-    circleMode: string;
     circleProbeDepth: number;
     probeMovementSpeed: number;
 }
@@ -182,7 +183,6 @@ export interface State {
     availableTools: AvailableTool[];
     units: UNITS_EN;
     direction: number;
-    circleMode: string;
     circleDiameter: number;
     probeType: PROBE_TYPES_T;
     connectivityTest: boolean;

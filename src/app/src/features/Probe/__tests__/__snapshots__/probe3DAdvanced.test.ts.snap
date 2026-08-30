@@ -2,7 +2,7 @@
 
 exports[`Circle Center - emitted G-code is stable for Inside bore 1`] = `
 [
-  "; 3D Probe Circle Center - inside bore, diameter 20",
+  "; 3D Probe Bore Center - inside bore, diameter 20",
   "; Instructions: start with the probe inside the hole, near its middle and below the top surface.",
   "%PROBE_DELAY=0.05",
   "%CIRCLE_FAST=150",
@@ -54,7 +54,7 @@ exports[`Circle Center - emitted G-code is stable for Inside bore 1`] = `
 
 exports[`Circle Center - emitted G-code is stable for Outside boss 1`] = `
 [
-  "; 3D Probe Circle Center - outside boss, diameter 20",
+  "; 3D Probe Boss Center - outside boss, diameter 20",
   "; Instructions: start with the probe above the middle of the boss, clear of the top. Round the diameter up rather than down - it sizes the step clear of the part.",
   "%PROBE_DELAY=0.05",
   "%CIRCLE_FAST=150",

@@ -35,8 +35,8 @@ import {
     PROBE_TYPE_TIP,
     isAutoZeroFamily,
     is3DFamily,
-    CIRCLE_MODE_BORE,
-    PROBE_ROUTINE_CIRCLE_CENTER,
+    PROBE_ROUTINE_BORE_CENTER,
+    PROBE_ROUTINE_BOSS_CENTER,
 } from 'app/lib/constants';
 import store from 'app/store';
 import { convertToImperial } from 'app/lib/units';
@@ -156,9 +156,6 @@ const ProbeWidget = () => {
     // unconverted: the routine forces G21 so its $13 handling stays sound.
     const [circleDiameter, setCircleDiameter] = useState<number>(
         config.get('circleDiameter') || 15,
-    );
-    const [circleMode, setCircleMode] = useState<string>(
-        config.get('circleMode') || CIRCLE_MODE_BORE,
     );
     const [circleProbeDepth, setCircleProbeDepth] = useState<number>(
         config.get('circleProbeDepth') || 5,
@@ -395,22 +392,29 @@ const ProbeWidget = () => {
                 commands.push(command);
             }
 
-            // Circle Center is exclusive to 3D Probe Advanced. Its axes match
-            // "XY Touch", so getProbeCode separates the two on the routine id.
+            // Centre finding is exclusive to 3D Probe Advanced. Bore and boss
+            // are separate routines so both are visible and one click apart -
+            // their motion differs too much to hide behind a shared button.
+            // Their axes match "XY Touch", so getProbeCode separates them on
+            // the routine id.
             if (
                 selectedProfile.touchplateType ===
                 TOUCHPLATE_TYPE_3D_ADVANCED
             ) {
-                commands.push({
-                    id: PROBE_ROUTINE_CIRCLE_CENTER,
-                    safe: true,
-                    tool: false,
-                    axes: {
-                        x: true,
-                        y: true,
-                        z: false,
+                [PROBE_ROUTINE_BORE_CENTER, PROBE_ROUTINE_BOSS_CENTER].forEach(
+                    (id) => {
+                        commands.push({
+                            id,
+                            safe: true,
+                            tool: false,
+                            axes: {
+                                x: true,
+                                y: true,
+                                z: false,
+                            },
+                        });
                     },
-                });
+                );
             }
             return commands;
         },
@@ -576,7 +580,6 @@ const ProbeWidget = () => {
             // and mm/min values rather than the display-converted ones.
             routineId: availableProbeCommands[selectedProbeCommand]?.id,
             circleDiameter,
-            circleMode,
             circleProbeDepth,
             probeFastMm: probeFastFeedrate,
             probeSlowMm: probeFeedrate,
@@ -664,7 +667,6 @@ const ProbeWidget = () => {
             setUseTLO(config.get('useTLO'));
             setProbeDepth(config.get('probeDepth') || {});
             setCircleDiameter(config.get('circleDiameter') || 15);
-            setCircleMode(config.get('circleMode') || CIRCLE_MODE_BORE);
             setCircleProbeDepth(config.get('circleProbeDepth') || 5);
             setProbeFeedrate(config.get('probeFeedrate') || {});
             setProbeFastFeedrate(config.get('probeFastFeedrate') || {});
@@ -701,7 +703,6 @@ const ProbeWidget = () => {
         availableTools: availableTools,
         units: units,
         direction: direction,
-        circleMode,
         circleDiameter,
         probeType: probeType,
         connectivityTest: connectivityTest,
