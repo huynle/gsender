@@ -236,7 +236,7 @@ const RunProbe = ({ actions, state }: RunProbeProps) => {
                                         <div>
                                             {circleIsBore
                                                 ? 'Start with the probe inside the hole, near its middle and below the top surface.'
-                                                : 'Start with the probe above the middle of the part, clear of the top. It will step outside, drop and probe inward.'}
+                                                : 'Start with the probe above the middle of the part, clear of the top. It steps outside, lowers, then probes inward. If the diameter above is smaller than the real part, it will still be over the material when it lowers - round up rather than down.'}
                                         </div>
                                     </div>
                                 </div>

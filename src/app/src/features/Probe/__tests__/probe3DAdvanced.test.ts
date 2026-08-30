@@ -317,8 +317,44 @@ describe('Circle Center - outside boss', () => {
         const firstProbe = code.findIndex((l) => /^G38\.2 X/.test(l));
         const dropBefore = code
             .slice(0, firstProbe)
-            .some((l) => /G0 Z-\[CIRCLE_PROBE_DEPTH\]/.test(l));
+            .some((l) => /Z-\[CIRCLE_PROBE_DEPTH\]/.test(l));
         expect(dropBefore).toBe(true);
+    });
+
+    it('descends with G38.3 so an undersized diameter cannot crash', () => {
+        // The step outward is a rapid based purely on the diameter the operator
+        // typed. Enter it too small and the machine is still over the part when
+        // it descends - a G0 would drive the probe into the top of the boss.
+        // G38.3 stops on contact and does not fault when it touches nothing,
+        // so the descent is safe whether or not we are actually clear.
+        const code = bossCode();
+        const descents = code.filter((l) =>
+            /Z-\[CIRCLE_PROBE_DEPTH\]/.test(l),
+        );
+        expect(descents.length).toBeGreaterThan(0);
+        descents.forEach((l) => {
+            expect(l).toMatch(/^G38\.3 Z-\[CIRCLE_PROBE_DEPTH\]/);
+            expect(l).not.toMatch(/^G\d+ .*G0/);
+        });
+    });
+
+    it('scales the inward probe with the diameter so an oversized entry still reaches', () => {
+        // We step out to radius + margin. Probing back in by that same distance
+        // reaches the nominal centre, so any over-estimate still finds the wall
+        // instead of stopping short in mid air.
+        const small = getProbeCode(
+            circleOptions({ circleMode: CIRCLE_MODE_BOSS, circleDiameter: 20 }),
+            0,
+        ).join('\n');
+        const large = getProbeCode(
+            circleOptions({
+                circleMode: CIRCLE_MODE_BOSS,
+                circleDiameter: 100,
+            }),
+            0,
+        ).join('\n');
+        expect(small).toContain('%CIRCLE_REACH=15');
+        expect(large).toContain('%CIRCLE_REACH=55');
     });
 
     it('lifts Z before crossing to the opposite side', () => {
@@ -337,13 +373,16 @@ describe('Circle Center - outside boss', () => {
     });
 
     it('returns Z to the starting height by the end of the cycle', () => {
+        // Counted by direction rather than by move type: the descent is a
+        // G38.3 probe and the lift is a rapid, but they must still pair up.
         const code = bossCode();
         const downs = code.filter((l) =>
-            /G0 Z-\[CIRCLE_PROBE_DEPTH\]/.test(l),
+            /Z-\[CIRCLE_PROBE_DEPTH\]/.test(l),
         ).length;
         const ups = code.filter((l) =>
-            /G0 Z\[CIRCLE_PROBE_DEPTH\]/.test(l),
+            /Z\[CIRCLE_PROBE_DEPTH\]/.test(l),
         ).length;
+        expect(downs).toBeGreaterThan(0);
         expect(ups).toBe(downs);
     });
 

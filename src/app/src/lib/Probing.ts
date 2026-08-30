@@ -1266,10 +1266,13 @@ export const getCircleCenterRoutine = (
     // Bore: probe outward from the middle, then across to the opposite wall.
     const searchHalf = radius + MARGIN;
     const searchFull = circleDiameter + MARGIN;
-    // Boss: step outside the part, then probe inward. `reach` is independent of
-    // the diameter because we always end up exactly MARGIN outside the wall.
+    // Boss: step outside the part, then probe inward. The step out is a rapid
+    // sized purely from the diameter the operator typed, so `reach` is set to
+    // the same distance: probing back in that far reaches the nominal centre,
+    // which means an over-estimated diameter still finds the wall rather than
+    // stopping short in mid air.
     const out = radius + MARGIN;
-    const reach = 2 * MARGIN;
+    const reach = out;
     const cross = circleDiameter + retract + MARGIN;
 
     const code: Array<string> = [
@@ -1277,7 +1280,7 @@ export const getCircleCenterRoutine = (
         `; Instructions: ${
             isBore
                 ? 'start with the probe inside the hole, near its middle and below the top surface.'
-                : 'start with the probe above the middle of the boss, clear of the top.'
+                : 'start with the probe above the middle of the boss, clear of the top. Round the diameter up rather than down - it sizes the step clear of the part.'
         }`,
         `%PROBE_DELAY=${probeDelay}`,
         `%CIRCLE_FAST=${probeFastMm}`,
@@ -1331,7 +1334,12 @@ export const getCircleCenterRoutine = (
     const bossAxis = (axis: 'X' | 'Y'): Array<string> => [
         `; ${axis} - outside boss`,
         `G21 G91 G0 ${axis}[CIRCLE_OUT]`,
-        'G21 G91 G0 Z-[CIRCLE_PROBE_DEPTH]',
+        // Descend with a probing move, not a rapid. If the diameter was
+        // entered too small the machine is still over the part here, and a
+        // G0 would drive the probe through the top of it. G38.3 stops on
+        // contact and does not fault when it reaches depth untouched.
+        'G21 G91',
+        'G38.3 Z-[CIRCLE_PROBE_DEPTH] F[CIRCLE_SLOW]',
         `G38.2 ${axis}-[CIRCLE_REACH] F[CIRCLE_FAST]`,
         'G4 P[PROBE_DELAY]',
         `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
@@ -1341,7 +1349,12 @@ export const getCircleCenterRoutine = (
         `G21 G91 G0 ${axis}[CIRCLE_RETRACT]`,
         'G21 G91 G0 Z[CIRCLE_PROBE_DEPTH]',
         `G21 G91 G0 ${axis}-[CIRCLE_CROSS]`,
-        'G21 G91 G0 Z-[CIRCLE_PROBE_DEPTH]',
+        // Descend with a probing move, not a rapid. If the diameter was
+        // entered too small the machine is still over the part here, and a
+        // G0 would drive the probe through the top of it. G38.3 stops on
+        // contact and does not fault when it reaches depth untouched.
+        'G21 G91',
+        'G38.3 Z-[CIRCLE_PROBE_DEPTH] F[CIRCLE_SLOW]',
         `G38.2 ${axis}[CIRCLE_REACH] F[CIRCLE_FAST]`,
         'G4 P[PROBE_DELAY]',
         `G21 G91 G0 ${axis}-[CIRCLE_RETRACT]`,
