@@ -504,7 +504,7 @@ class GrblHalController {
 					const text = (m[1] !== undefined ? m[1] : m[2]).trim();
 					if (text) commentParts.push(text);
 				}
-				const commentString = commentParts.join(" ");
+				let commentString = commentParts.join(" ");
 				if (line[0] !== "%") {
 					line = line.replace(bracketCommentLine, "").trim();
 					line = line.replace(commentMatcher, "").replace("/uFEFF", "").trim();
