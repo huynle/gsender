@@ -885,6 +885,7 @@ export function* initialize(): Generator<any, void, any> {
                 type: typeof ALARM | typeof ERROR;
                 lineNumber: number;
                 code: number;
+                description: string;
                 line: string;
             },
             _wasRunning: boolean,
