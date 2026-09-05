@@ -11,12 +11,14 @@ on:
     # Sequence of patterns matched against refs/tags
     tags:
       - '*'
+      - '!master-latest' # rolling tag moved by the publish job below
   pull_request:
     branches: [ "master" ]
 
 env:
   GITHUB_TOKEN: ${{ secrets.CI_TOKEN }}
   NODE_OPTIONS: --max-old-space-size=8192
+  COMMIT_COUNT: ${{ github.run_number }}
   VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ secrets.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
   VITE_PUBLIC_POSTHOG_HOST: ${{ secrets.VITE_PUBLIC_POSTHOG_HOST }}
 
@@ -37,7 +39,6 @@ jobs:
       - name: Prepare release assets
         shell: bash
         run: |
-          GIT_COMMIT_LOG=`git log -1 --format='%ci %H %s'`
           PACKAGE_NAME=`node -e "console.log(require('./src/package.json').name)"`
           PACKAGE_VERSION=`node -e "console.log(require('./src/package.json').version)"`
           mkdir -p releases/linux
@@ -47,21 +48,6 @@ jobs:
           cp -af "output/${PACKAGE_NAME}-${PACKAGE_VERSION}-arm64.AppImage" "releases/linux/${PACKAGE_NAME}-${PACKAGE_VERSION}-Linux-ARM-64Bit.AppImage"
           cp -af "output/${PACKAGE_NAME}-${PACKAGE_VERSION}-arm64.deb" "releases/linux/${PACKAGE_NAME}-${PACKAGE_VERSION}-Linux-ARM-64Bit.deb"
           ls -al output releases/linux
-          if [[ "$GITHUB_REF_TYPE" == "branch" && "$GITHUB_REF_NAME" == "master" ]]; then
-            yarn github-release delete \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              "*-linux*";
-            yarn github-release upload \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              --body="${GIT_COMMIT_LOG}" \
-              releases/linux/*;
-          fi
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
@@ -69,6 +55,13 @@ jobs:
           files: releases/linux/*
           prerelease: true
           draft: true
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_artifact
+          path: releases/linux/*
+          compression-level: 0 # no compression
+          retention-days: 7
 
   build-macos:
     name: Build macOS packages
@@ -97,7 +90,6 @@ jobs:
       - name: Prepare release assets
         shell: bash
         run: |
-          GIT_COMMIT_LOG=`git log -1 --format='%ci %H %s'`
           PACKAGE_NAME=`node -e "console.log(require('./src/package.json').name)"`
           PACKAGE_VERSION=`node -e "console.log(require('./src/package.json').version)"`
           mkdir -p releases/macos
@@ -105,21 +97,6 @@ jobs:
           cp -af "output/${PACKAGE_NAME}-${PACKAGE_VERSION}-x64.dmg" "releases/macos/gSender-${PACKAGE_VERSION}-Mac-Intel.dmg"
           cp -af "output/${PACKAGE_NAME}-${PACKAGE_VERSION}-arm64.dmg" "releases/macos/gSender-${PACKAGE_VERSION}-Mac-Silicon.dmg"
           ls -al output releases/macos
-          if [[ "$GITHUB_REF_TYPE" == "branch" && "$GITHUB_REF_NAME" == "master" ]]; then
-            yarn github-release delete \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              "*-macos*";
-            yarn github-release upload \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              --body="${GIT_COMMIT_LOG}" \
-              releases/macos/*;
-          fi
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
@@ -127,13 +104,13 @@ jobs:
           files: releases/macos/*
           prerelease: true
           draft: true
-      - name: Upload Mac Artifacts
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mac_artifact
-          path: releases/macos/*.dmg
+          name: macos_artifact
+          path: releases/macos/*
           compression-level: 0 # no compression
-          retention-days: 2
+          retention-days: 7
 
   build-windows:
     name: Build Windows packages
@@ -203,28 +180,12 @@ jobs:
       - name: Prepare release assets
         shell: bash
         run: |
-          GIT_COMMIT_LOG=`git log -1 --format='%ci %H %s'`
           PACKAGE_NAME=`node -e "console.log(require('./src/package.json').name)"`
           PACKAGE_VERSION=`node -e "console.log(require('./src/package.json').version)"`
           mkdir -p releases/windows
           ls -al output
           cp -af "output/${PACKAGE_NAME}-${PACKAGE_VERSION}-x64.exe" "releases/windows/gSender-${PACKAGE_VERSION}-Windows-64Bit.exe"
           ls -al output releases/windows
-          if [[ "$GITHUB_REF_TYPE" == "branch" && "$GITHUB_REF_NAME" == "master" ]]; then
-            yarn github-release delete \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              "*-windows*";
-            yarn github-release upload \
-              --owner=gSender \
-              --repo=gsender \
-              --tag="${GITHUB_REF_NAME}-latest" \
-              --release-name="${GITHUB_REF_NAME}" \
-              --body="${GIT_COMMIT_LOG}" \
-              releases/windows/*;
-          fi
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
@@ -232,13 +193,13 @@ jobs:
           files: releases/windows/*
           prerelease: true
           draft: true
-      - name: Upload Windows Artifacts
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows_artifact
-          path: releases/windows/*.exe
+          path: releases/windows/*
           compression-level: 0 # no compression
-          retention-days: 2
+          retention-days: 7
   build-pi:
     name: Build Raspberry PI packages
     runs-on: ubuntu-24.04-arm
@@ -262,3 +223,52 @@ jobs:
             releases/pi/*
           prerelease: true
           draft: true
+      - name: Upload Raspberry Pi artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi_artifact
+          path: releases/pi/*
+          compression-level: 0 # no compression
+          retention-days: 7
+
+  publish-master-latest:
+    name: Publish master-latest rolling release
+    # Every push to master replaces the master-latest prerelease on this repository
+    # with the installers built above, so the newest master is always downloadable.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [build-linux, build-macos, build-windows, build-pi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: releases
+          merge-multiple: true
+      - name: Publish rolling release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ls -al releases
+          COMMIT_LOG=`git log -1 --format='%ci %H %s'`
+          NOTES="Rolling build of the master branch, replaced on every push. Build #${GITHUB_RUN_NUMBER}.
+
+          ${COMMIT_LOG}
+
+          These builds are not code-signed. On macOS, right-click the app and choose Open the first time, or run \`xattr -cr /Applications/gSender.app\`. On Windows, choose 'More info' then 'Run anyway' at the SmartScreen prompt."
+          # Recreate the release from scratch so no stale assets from an older version linger.
+          gh release delete master-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          git tag -f master-latest "$GITHUB_SHA"
+          git push -f origin master-latest
+          gh release create master-latest \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "master-latest (rolling build #${GITHUB_RUN_NUMBER})" \
+            --notes "$NOTES" \
+            releases/*
