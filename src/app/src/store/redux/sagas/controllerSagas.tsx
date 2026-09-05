@@ -885,6 +885,7 @@ export function* initialize(): Generator<any, void, any> {
                 type: typeof ALARM | typeof ERROR;
                 lineNumber: number;
                 code: number;
+                description: string;
                 line: string;
             },
             _wasRunning: boolean,
@@ -915,6 +916,10 @@ export function* initialize(): Generator<any, void, any> {
 
             if (ALARM_ERROR_TYPES.includes(error.type)) {
                 updateAlarmsErrors(error);
+                toast.error(
+                    `${error.type === ALARM ? "Alarm" : "Error"} ${error.code}: ${error.description}`,
+                    { position: "bottom-right" },
+                );
             }
 
             pubsub.publish('error', error);
