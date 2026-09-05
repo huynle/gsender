@@ -20,8 +20,6 @@
  * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
  *
  */
-import { JSX } from 'react';
-import moment from 'moment';
 
 import {
     Tooltip,
@@ -29,11 +27,13 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from 'app/components/shadcn/Tooltip';
-import { SenderStatus } from 'app/lib/definitions/sender_feeder';
 import {
     convertMillisecondsToTimeStamp,
     convertSecondsToDHMS,
 } from 'app/lib/datetime';
+import type { SenderStatus } from 'app/lib/definitions/sender_feeder';
+import moment from 'moment';
+import type { JSX } from 'react';
 import { WORKFLOW_STATE_PAUSED } from '../../constants';
 
 import WoodcuttingProgress from './WoodcuttingProgress';
@@ -113,7 +113,8 @@ const ProgressArea = ({ senderStatus, workflowState }: Props) => {
         ? 0
         : (currentLineRunning / total) * 100;
     const displayedPercentage = Math.min(100, Math.floor(percentageValue));
-    const isFinalizing = displayedPercentage >= 100 && Number(remainingTime) > 0;
+    const isFinalizing =
+        displayedPercentage >= 100 && Number(remainingTime) > 0;
 
     const timeSplit = convertSecondsToDHMS(Number(remainingTime));
     const timeComponent = getTimesHTML(timeSplit);
@@ -136,7 +137,7 @@ const ProgressArea = ({ senderStatus, workflowState }: Props) => {
             aria-valuemax={100}
             aria-label="Job Progress"
         >
-            <div className="border-solid border border-gray-500 dark:border-gray-700 rounded-sm bg-gray-100 dark:bg-dark gap-2 flex flex-row justify-between items-center pr-1 pt-1 text-gray-900 dark:text-gray-200">
+            <div className="border-solid border border-gray-500 dark:border-outline rounded-sm bg-gray-100 dark:bg-surface-raised gap-2 flex flex-row justify-between items-center pr-1 pt-1 text-gray-900 dark:text-content-secondary">
                 <div className="flex flex-col gap-0 w-full h-full -mt-6">
                     <div
                         className="flex flex-row justify-start items-end px-3 -mb-1 whitespace-nowrap transition-transform duration-200"
@@ -160,13 +161,13 @@ const ProgressArea = ({ senderStatus, workflowState }: Props) => {
                         <TooltipTrigger asChild>
                             <div className="flex flex-col  justify-center items-center w-32">
                                 {isFinalizing ? (
-                                    <>
-                                        <span className="text-sm">Finalizing</span>
-                                    </>
+                                    <span className="text-sm">Finalizing</span>
                                 ) : (
                                     <>
                                         {timeComponent}
-                                        <span className="text-sm">remaining</span>
+                                        <span className="text-sm">
+                                            remaining
+                                        </span>
                                     </>
                                 )}
                             </div>
@@ -178,10 +179,10 @@ const ProgressArea = ({ senderStatus, workflowState }: Props) => {
                 </TooltipProvider>
             </div>
             <div className="w-full flex flex-row justify-between gap-2 text-sm whitespace-nowrap mt-1.5">
-                <span className="px-2 py-0.5 rounded-md bg-gray-900/60 dark:bg-gray-100/70 text-gray-100 dark:text-gray-900">
+                <span className="px-2 py-0.5 rounded-md bg-gray-900/60 dark:bg-gray-100/70 text-gray-100 dark:text-content-inverse">
                     {`${currentLineRunning} / ${total} Lines`}
                 </span>
-                <span className="px-2 py-0.5 rounded-md bg-gray-900/60 dark:bg-gray-100/70 text-gray-100 dark:text-gray-900">
+                <span className="px-2 py-0.5 rounded-md bg-gray-900/60 dark:bg-gray-100/70 text-gray-100 dark:text-content-inverse">
                     {convertMillisecondsToTimeStamp(elapsedTime, true)} cutting
                 </span>
             </div>

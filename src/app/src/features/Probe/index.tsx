@@ -20,40 +20,47 @@
  * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
  *
  */
+
+import { usePostHog } from '@posthog/react';
+import type { UNITS_EN } from 'app/definitions/general';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import {
+    is3DFamily,
+    isAutoZeroFamily,
+    PROBE_ROUTINE_BORE_CENTER,
+    PROBE_ROUTINE_BOSS_CENTER,
+    PROBE_TYPE_AUTO,
+    PROBE_TYPE_DIAMETER,
+    PROBE_TYPE_TIP,
+    TOUCHPLATE_TYPE_3D,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
+    TOUCHPLATE_TYPE_AUTOZERO,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+    TOUCHPLATE_TYPE_ZERO,
+} from 'app/lib/constants';
+// import Space from 'app/components/Space';
+import controller from 'app/lib/controller';
+import { getProbeCode } from 'app/lib/Probing';
+import { convertToImperial } from 'app/lib/units';
+import store from 'app/store';
+import type { Workspace } from 'app/workspace/definitions';
 import get from 'lodash/get';
 import includes from 'lodash/includes';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePostHog } from '@posthog/react';
-// import Space from 'app/components/Space';
-import controller from 'app/lib/controller';
 import {
-    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
-    TOUCHPLATE_TYPE_3D_ADVANCED,
-    PROBE_TYPE_AUTO,
-    TOUCHPLATE_TYPE_ZERO,
-    PROBE_TYPE_DIAMETER,
-    PROBE_TYPE_TIP,
-    isAutoZeroFamily,
-    is3DFamily,
-    PROBE_ROUTINE_BORE_CENTER,
-    PROBE_ROUTINE_BOSS_CENTER,
-} from 'app/lib/constants';
-import store from 'app/store';
-import { convertToImperial } from 'app/lib/units';
-import Probe from './Probe';
-import RunProbe from './RunProbe';
-import {
-    // Units
-    METRIC_UNITS,
     // Grbl
     GRBL,
-    GRBLHAL,
     GRBL_ACTIVE_STATE_IDLE,
+    GRBLHAL,
+    // Units
+    METRIC_UNITS,
     WORKFLOW_STATE_RUNNING,
 } from '../../constants';
-import { getProbeCode } from 'app/lib/Probing';
-import { getWidgetConfigContext } from '../WidgetConfig/WidgetContextProvider';
 import {
+    getWidgetConfigContext,
+    WidgetConfigProvider,
+} from '../WidgetConfig/WidgetContextProvider';
+import type {
     Actions,
     AvailableTool,
     PROBE_TYPES_T,
@@ -63,10 +70,8 @@ import {
     State,
     TOUCHPLATE_TYPES_T,
 } from './definitions';
-import { UNITS_EN } from 'app/definitions/general';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
-import { WidgetConfigProvider } from '../WidgetConfig/WidgetContextProvider';
-import { Workspace } from 'app/workspace/definitions';
+import Probe from './Probe';
+import RunProbe from './RunProbe';
 
 const ProbeWidget = () => {
     const posthog = usePostHog();
@@ -680,7 +685,7 @@ const ProbeWidget = () => {
             setZRetractDistance(config.get('zRetractNormal'));
             setZRetractDistanceAuto(config.get('zRetractAuto'));
 
-            let newZProbeDistance = config.get('zProbeDistance');
+            const newZProbeDistance = config.get('zProbeDistance');
             if (newZProbeDistance) {
                 PROBE_DISTANCE_METRIC.z = newZProbeDistance;
                 PROBE_DISTANCE_IMPERIAL.z =

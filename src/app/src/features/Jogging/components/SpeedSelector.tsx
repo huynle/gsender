@@ -1,18 +1,20 @@
-import { useEffect, useState, useRef } from 'react';
-import cn from 'classnames';
-import pubsub from 'pubsub-js';
-import get from 'lodash/get';
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <> */
+/** biome-ignore-all lint/a11y/useButtonType: <> */
 
-import { JoggingSpeedOptions } from 'app/features/Jogging/utils/Jogging';
-import store from 'app/store';
-import { JogValueObject } from 'app/features/Jogging';
+import { usePostHog } from '@posthog/react';
 import { IMPERIAL_UNITS, JOGGING_CATEGORY, METRIC_UNITS } from 'app/constants';
-import useKeybinding from 'app/lib/useKeybinding';
+import type { JogValueObject } from 'app/features/Jogging';
+import type { JoggingSpeedOptions } from 'app/features/Jogging/utils/Jogging';
 import useShuttleEvents from 'app/hooks/useShuttleEvents';
 import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
+import useKeybinding from 'app/lib/useKeybinding';
+import store from 'app/store';
+import cn from 'classnames';
+import get from 'lodash/get';
+import pubsub from 'pubsub-js';
+import { useEffect, useRef, useState } from 'react';
 
 import { convertValue } from '../utils/units';
-import { usePostHog } from 'posthog-js/react';
 
 export interface SpeedSelectButtonProps {
     active?: boolean;
@@ -30,9 +32,10 @@ export function SpeedSelectButton({
     return (
         <button
             className={cn(
-                'text-sm px-2 max-xl:px-1 max-xl:py-1 py-2 rounded h-full',
+                'text-sm px-2 max-xl:px-1 max-xl:py-1 py-2 rounded h-full border border-transparent',
                 {
-                    'bg-blue-400 bg-opacity-30': active,
+                    'bg-blue-400 bg-opacity-30 border-blue-500 font-semibold text-blue-700 dark:text-blue-300':
+                        active,
                 },
             )}
             onClick={onClick}
@@ -45,7 +48,7 @@ export function SpeedSelectButton({
 }
 
 interface SpeedSelectorProps {
-    handleClick: (values: JogValueObject) => void;
+    handleClick: (values: JogValueObject, speed: JoggingSpeedOptions) => void;
 }
 
 export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
@@ -69,6 +72,7 @@ export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
     const rapidActive = selectedSpeed === 'Rapid';
     const normalActive = selectedSpeed === 'Normal';
     const preciseActive = selectedSpeed === 'Precise';
+    const customActive = selectedSpeed === 'Custom';
 
     function handleSpeedChange(speed: JoggingSpeedOptions) {
         if (speed === selectedSpeedRef.current) {
@@ -82,7 +86,8 @@ export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
 
     function updateCurrentJogValues(speedOverride?: JoggingSpeedOptions) {
         const jogValues = store.get('widgets.axes.jog', {});
-        const key = (speedOverride ?? selectedSpeedRef.current).toLowerCase();
+        const speedKey = speedOverride ?? selectedSpeedRef.current;
+        const key = speedKey.toLowerCase();
         const newSpeeds = { ...get(jogValues, key, {}) };
 
         // Only convert if the units have changed or we've selected a different speed
@@ -113,7 +118,7 @@ export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
             feedrate: newSpeeds.feedrate,
         });
 
-        handleClickRef.current(newSpeeds);
+        handleClickRef.current(newSpeeds, speedKey);
         previousUnitsRef.current = units;
     }
 
@@ -217,11 +222,12 @@ export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
 
     useShuttleEvents(shuttleControlEvents);
     useEffect(() => {
+        // biome-ignore lint/correctness/useHookAtTopLevel: <>
         useKeybinding(shuttleControlEvents);
     }, []);
 
     return (
-        <div className="flex flex-col bg-white dark:bg-dark dark:text-white rounded-md border-solid border border-gray-300 dark:border-gray-700 p-1 w-32 max-xl:w-28">
+        <div className="flex flex-col bg-white dark:bg-surface-raised dark:text-content-primary rounded-md border-solid border border-gray-300 dark:border-outline p-1 w-32 max-xl:w-28">
             <SpeedSelectButton
                 active={preciseActive}
                 onClick={() => handleSpeedChange('Precise')}
@@ -239,6 +245,12 @@ export function SpeedSelector({ handleClick }: SpeedSelectorProps) {
                 onClick={() => handleSpeedChange('Rapid')}
                 label="Rapid"
                 screenReaderLabel="Set to Rapid jog preset"
+            />
+            <SpeedSelectButton
+                active={customActive}
+                onClick={() => handleSpeedChange('Custom')}
+                label="Custom"
+                screenReaderLabel="Set to Custom jog preset"
             />
         </div>
     );

@@ -1,13 +1,13 @@
-import { TiPin, TiPinOutline } from 'react-icons/ti';
-import { IoClose } from 'react-icons/io5';
+import { Switch } from 'app/components/shadcn/Switch';
+import { KeepoutToggle } from 'app/features/ATC/components/KeepOut/KeepOutToggle.tsx';
 import ModalRow from 'app/features/MachineInfo/ModalRow.tsx';
 import PinRow from 'app/features/MachineInfo/PinRow.tsx';
 import { useTypedSelector } from 'app/hooks/useTypedSelector.ts';
-import store from 'app/store';
-import { Switch } from 'app/components/shadcn/Switch';
 import controller from 'app/lib/controller.ts';
+import store from 'app/store';
 import get from 'lodash/get';
-import { KeepoutToggle } from 'app/features/ATC/components/KeepOut/KeepOutToggle.tsx';
+import { IoClose } from 'react-icons/io5';
+import { TiPin, TiPinOutline } from 'react-icons/ti';
 
 interface MachineInfoDisplayProps {
     pinned: boolean;
@@ -45,7 +45,10 @@ export function MachineInfoDisplay({
             return sanitizedVersion || disconnectedValue;
         }
 
-        if (reportedFirmwareVersion && typeof reportedFirmwareVersion === 'object') {
+        if (
+            reportedFirmwareVersion &&
+            typeof reportedFirmwareVersion === 'object'
+        ) {
             const semver = get(reportedFirmwareVersion, 'semver');
 
             if (typeof semver === 'string' || typeof semver === 'number') {
@@ -90,13 +93,15 @@ export function MachineInfoDisplay({
             <div className="flex flex-row w-full justify-between items-center mb-2">
                 <div>
                     <span className="font-bold text-2xl">
-                    Machine Information
-                </span>
-                    <div className="my-3"><b>Firmware version:</b> {firmwareVersion}</div>
+                        Machine Information
+                    </span>
+                    <div className="my-3">
+                        <b>Firmware version:</b> {firmwareVersion}
+                    </div>
                 </div>
 
                 <div className="flex flex-row items-center gap-2">
-                    <div className="text-2xl text-gray-600 max-sm:hidden dark:text-white cursor-pointer hover:text-blue-500 transition-colors">
+                    <div className="text-2xl text-gray-600 max-sm:hidden dark:text-content-primary cursor-pointer hover:text-blue-500 transition-colors">
                         {pinned ? (
                             <TiPin
                                 onClick={() => setPinned(!pinned)}
@@ -126,7 +131,7 @@ export function MachineInfoDisplay({
                     {onClose && (
                         <button
                             onClick={onClose}
-                            className="text-2xl text-gray-600 dark:text-white hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                            className="text-2xl text-gray-600 dark:text-content-primary hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
                             aria-label="Close machine information"
                         >
                             <IoClose />
@@ -189,12 +194,19 @@ export function MachineInfoDisplay({
             </div>
             {currentTool >= 0 && (
                 <div className="text-gray-500 flex w-full gap-4">
-                    <span>Current tool: </span>
-                    <span className="text-black">T{currentTool}</span>
+                    <span className="text-gray-500 dark:text-content-primary">
+                        Current tool:{' '}
+                    </span>
+                    <span className="text-black dark:text-content-primary">
+                        T{currentTool}
+                    </span>
                 </div>
             )}
             <div className="flex flex-row gap-4 items-center mt-4">
-                <span className="text-gray-500 dark:text-white" id="lock-stepper-label">
+                <span
+                    className="text-gray-500 dark:text-content-primary"
+                    id="lock-stepper-label"
+                >
                     Lock stepper motors
                 </span>
                 <Switch
@@ -207,7 +219,7 @@ export function MachineInfoDisplay({
 
             {keepoutFlags && (
                 <div className="flex flex-row gap-2 items-center mt-2">
-                    <span className="text-gray-500 dark:text-white">
+                    <span className="text-gray-500 dark:text-content-primary">
                         Keepout:
                     </span>
                     <KeepoutToggle />

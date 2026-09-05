@@ -20,16 +20,21 @@
  * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
  *
  */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <> */
 
-import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import {
+import type { MachineProfile } from 'app/definitions/firmware';
+import type { PluginCapabilitiesWire } from 'app/features/Plugins/types';
+import axios, {
+    type AxiosResponse,
+    type InternalAxiosRequestConfig,
+} from 'axios';
+import type {
     FetchOptions,
     GCodeOptions,
     SigninOptions,
     StateOptions,
     WatchOptions,
 } from './definitions';
-import { MachineProfile } from 'app/definitions/firmware';
 
 // import store from "../store";
 
@@ -291,6 +296,10 @@ const macros = {
         return authrequest.put('/api/macros/' + id, options);
     },
 
+    bulkUpdate: (macros: any[]): Promise<AxiosResponse> => {
+        return authrequest.put('/api/macros', { macros });
+    },
+
     delete: (id: string): Promise<AxiosResponse> => {
         return authrequest.delete('/api/macros/' + id);
     },
@@ -452,6 +461,65 @@ const preferences = {
     },
 };
 
+//
+// Plugins
+//
+const plugins = {
+    fetch: (): Promise<AxiosResponse> => {
+        return authrequest.get('/api/plugins');
+    },
+    update: (
+        id: string,
+        options: { enabled: boolean },
+    ): Promise<AxiosResponse> => {
+        return authrequest.put(
+            `/api/plugins/${encodeURIComponent(id)}`,
+            options,
+        );
+    },
+    openDirectory: (pluginPath?: string): Promise<AxiosResponse> => {
+        return authrequest.post(
+            '/api/plugins/open-directory',
+            pluginPath ? { pluginPath } : {},
+        );
+    },
+    readImportedManifest: (pluginPath: string): Promise<AxiosResponse> => {
+        return authrequest.post('/api/plugins/read-imported-manifest', {
+            pluginPath,
+        });
+    },
+    writePermissions: (
+        pluginPath: string,
+        capabilities: PluginCapabilitiesWire,
+    ): Promise<AxiosResponse> => {
+        return authrequest.post('/api/plugins/write-permissions', {
+            pluginPath,
+            capabilities,
+        });
+    },
+    scanPluginForSDKUsage: (
+        indexFile: string,
+        sdks: string[],
+    ): Promise<AxiosResponse> => {
+        return authrequest.post('/api/plugins/scan-plugin-for-sdk-usage', {
+            indexFile,
+            sdks,
+        });
+    },
+    importPlugin: (
+        pluginsDir: string,
+        directory: string,
+    ): Promise<AxiosResponse> => {
+        return authrequest.post('/api/plugins/import-plugin', {
+            pluginsDir,
+            directory,
+        });
+    },
+    updateSettings: (pluginsDir: string): Promise<AxiosResponse> => {
+        return authrequest.post('/api/plugins/settings', { pluginsDir });
+    },
+};
+
 export default {
     signin,
     getLatestVersion,
@@ -478,4 +546,5 @@ export default {
     alarmList,
     releaseNotes,
     preferences,
+    plugins,
 };

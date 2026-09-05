@@ -21,12 +21,12 @@
  *
  */
 
-import React from 'react';
-import get from 'lodash/get';
-import cx from 'classnames';
 import { GRBL_ACTIVE_STATE_IDLE } from 'app/constants';
 import { useWizardAPI, useWizardContext } from 'app/features/Helper/context';
+import cx from 'classnames';
+import get from 'lodash/get';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import React from 'react';
 import { useSelector } from 'react-redux';
 
 const Controls = () => {
@@ -56,7 +56,8 @@ const Controls = () => {
         s.substeps.map((_: unknown, ssi: number) => ({ si, ssi })),
     );
     const flatCurrent = allSubsteps.findIndex(
-        ({ si, ssi }: { si: number; ssi: number }) => si === activeStep && ssi === activeSubstep,
+        ({ si, ssi }: { si: number; ssi: number }) =>
+            si === activeStep && ssi === activeSubstep,
     );
 
     return (
@@ -69,7 +70,7 @@ const Controls = () => {
                     updateSubstepOverlay(activeValues);
                     scrollToActiveStep(activeValues);
                 }}
-                className="flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-md border border-gray-300 dark:border-[#3a3a48] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-35 disabled:pointer-events-none transition-colors"
+                className="flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-md border border-gray-300 dark:border-[#3a3a48] text-gray-600 dark:text-content-muted hover:bg-gray-100 dark:hover:bg-white/5 disabled:opacity-35 disabled:pointer-events-none transition-colors"
             >
                 <ArrowLeft size={12} />
                 Back
@@ -84,8 +85,8 @@ const Controls = () => {
                             i === flatCurrent
                                 ? 'w-[24px] bg-blue-600 dark:bg-blue-400'
                                 : i < flatCurrent
-                                    ? 'w-[18px] bg-blue-300 dark:bg-blue-700'
-                                    : 'w-[18px] bg-gray-300 dark:bg-[#2a2a35]',
+                                  ? 'w-[18px] bg-blue-300 dark:bg-blue-700'
+                                  : 'w-[18px] bg-gray-300 dark:bg-[#2a2a35]',
                         )}
                     />
                 ))}

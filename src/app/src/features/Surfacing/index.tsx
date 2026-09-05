@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
-import get from 'lodash/get';
-import pubsub from 'pubsub-js';
-import { useNavigate } from 'react-router';
-import cx from 'classnames';
-
-import store from 'app/store';
+import { Button } from 'app/components/Button';
+import { ControlledInput } from 'app/components/ControlledInput';
+import InputArea from 'app/components/InputArea';
+import { Switch } from 'app/components/shadcn/Switch';
+import { Tabs, TabsList, TabsTrigger } from 'app/components/shadcn/Tabs';
+import Tooltip from 'app/components/Tooltip';
 import {
     GRBL_ACTIVE_STATE_IDLE,
     GRBL_ACTIVE_STATE_JOG,
@@ -12,24 +11,23 @@ import {
     METRIC_UNITS,
     VISUALIZER_SECONDARY,
 } from 'app/constants';
-import { convertToImperial, convertToMetric } from 'app/lib/units';
-import { Switch } from 'app/components/shadcn/Switch';
 import { useTypedSelector } from 'app/hooks/useTypedSelector';
-import { ControlledInput } from 'app/components/ControlledInput';
-import defaultState from 'app/store/defaultState';
-import { Tabs, TabsList, TabsTrigger } from 'app/components/shadcn/Tabs';
 import controller from 'app/lib/controller';
 import { uploadGcodeFileToServer } from 'app/lib/fileupload';
-import InputArea from 'app/components/InputArea';
-import { Button } from 'app/components/Button';
-import VisualizerPreview from './components/VisualizerPreview';
-import Tooltip from 'app/components/Tooltip';
-
-import { Surfacing } from './definitions';
-import MachinePosition from './components/MachinePosition';
+import { convertToImperial, convertToMetric } from 'app/lib/units';
+import store from 'app/store';
+import defaultState from 'app/store/defaultState';
+import cx from 'classnames';
+import get from 'lodash/get';
+import pubsub from 'pubsub-js';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import WidgetConfig from '../WidgetConfig/WidgetConfig';
-import Generator from './utils/surfacingGcodeGenerator';
 import { GcodeViewer } from './components/GcodeViewer';
+import MachinePosition from './components/MachinePosition';
+import VisualizerPreview from './components/VisualizerPreview';
+import type { Surfacing } from './definitions';
+import Generator from './utils/surfacingGcodeGenerator';
 
 const defaultSurfacingState = get(
     defaultState,
@@ -142,10 +140,10 @@ const SurfacingTool = () => {
 
     return (
         <>
-            <div className="bg-white dark:bg-transparent dark:text-white w-full flex flex-col gap-2">
+            <div className="bg-white dark:bg-transparent dark:text-content-primary w-full flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-4 max-xl:gap-3 xl:gap-2">
-                        <p className="text-sm xl:text-base font-normal text-gray-500 dark:text-gray-300">
+                        <p className="text-sm xl:text-base font-normal text-gray-500 dark:text-content-secondary">
                             <b>For ideal wasteboard surfacing:</b> know your
                             CNCs exact movement limits accounting for limit
                             switches and other add-ons, get nicer and faster
@@ -224,8 +222,9 @@ const SurfacingTool = () => {
                                         suffix={units}
                                         min={0.00001}
                                         max={10000}
+                                        invalid={isCutDepthExceedingMax}
                                         className={cx('rounded', inputStyle, {
-                                            'text-red-500 border-red-500':
+                                            'text-red-500':
                                                 isCutDepthExceedingMax,
                                         })}
                                         wrapperClassName="w-full"
@@ -251,8 +250,9 @@ const SurfacingTool = () => {
                                         suffix={units}
                                         min={0.00001}
                                         max={10000}
+                                        invalid={isCutDepthExceedingMax}
                                         className={cx(inputStyle, {
-                                            'text-red-500 border-red-500':
+                                            'text-red-500':
                                                 isCutDepthExceedingMax,
                                         })}
                                         wrapperClassName="w-full"
@@ -383,7 +383,7 @@ const SurfacingTool = () => {
                                     content={`Default is ${convertedDefaultSurfacingState.mist ? 'on' : 'off'}`}
                                 >
                                     <div className="flex items-center gap-2 justify-center">
-                                        <span className="font-light text-sm max-w-20 dark:text-white">
+                                        <span className="font-light text-sm max-w-20 dark:text-content-primary">
                                             Mist (M7)
                                         </span>
                                         <Switch
@@ -403,7 +403,7 @@ const SurfacingTool = () => {
                                     content={`Default is ${convertedDefaultSurfacingState.flood ? 'on' : 'off'}`}
                                 >
                                     <div className="flex items-center gap-2 justify-center">
-                                        <span className="font-light text-sm max-w-20 dark:text-white">
+                                        <span className="font-light text-sm max-w-20 dark:text-content-primary">
                                             Flood (M8)
                                         </span>
                                         <Switch
@@ -473,10 +473,7 @@ const SurfacingTool = () => {
                     <Button onClick={handleGenerateGcode} disabled={isDisabled}>
                         Generate G-code
                     </Button>
-                    <Button
-                        disabled={!!!gcode || isDisabled}
-                        onClick={loadGcode}
-                    >
+                    <Button disabled={!gcode || isDisabled} onClick={loadGcode}>
                         Load to Main Visualizer
                     </Button>
                 </div>

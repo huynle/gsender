@@ -1,14 +1,14 @@
-import {StepActionButton} from "app/features/AccessoryInstaller/components/wizard/StepActionButton.tsx";
-import controller from "app/lib/controller.ts";
-import {StepProps} from "app/features/AccessoryInstaller/types";
-import {useState} from "react";
-import {useTypedSelector} from "app/hooks/useTypedSelector.ts";
-import {RootState} from "app/store/redux";
+import { StepActionButton } from 'app/components/Wizard/StepActionButton.tsx';
+import type { StepProps } from 'app/components/Wizard/types';
+import { useTypedSelector } from 'app/hooks/useTypedSelector.ts';
+import controller from 'app/lib/controller.ts';
+import type { RootState } from 'app/store/redux';
+import { useState } from 'react';
 
-export function Modbus({ onComplete, onUncomplete }: StepProps) {
+export function Modbus({ onComplete }: StepProps) {
     const [hasConfiguredModbus, setHasConfiguredModbus] =
         useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, _setError] = useState<string | null>(null);
 
     const isConnected = useTypedSelector(
         (state: RootState) => state.connection.isConnected,
@@ -28,21 +28,23 @@ export function Modbus({ onComplete, onUncomplete }: StepProps) {
 
     return (
         <div className="flex flex-col gap-5 justify-start">
-            <p className="text-gray-900 dark:text-white">
+            <p className="text-gray-900 dark:text-content-primary">
                 <b>
                     You are able to complete this step while the controller is
                     still alarmed
                 </b>
             </p>
-            <p className="dark:text-white">
+            <p className="dark:text-content-primary">
                 Additional spindle settings are applied in this step.
             </p>
             <ol className="list-decimal p-5 gap-4 space-y-2">
                 <li>
-                Reconnect to your controller.
-                Please ignore any alarms that pop-up.
+                    Reconnect to your controller. Please ignore any alarms that
+                    pop-up.
                 </li>
-                <li>Press <b>"Apply and Restart"</b></li>
+                <li>
+                    Press <b>"Apply and Restart"</b>
+                </li>
             </ol>
             <StepActionButton
                 label="Apply and Restart"
@@ -51,6 +53,7 @@ export function Modbus({ onComplete, onUncomplete }: StepProps) {
                 isComplete={hasConfiguredModbus}
                 error={error}
                 disabled={!isConnected}
+                data-testid="atc-configure-modbus"
             />
         </div>
     );

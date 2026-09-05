@@ -1,9 +1,8 @@
-import { useLocation } from 'react-router';
+import { ToolTimelineWrapper } from 'app/features/ATC/components/ToolTimeline';
+import Visualizer from 'app/features/Visualizer';
 import cx from 'classnames';
 import { useMediaQuery } from 'react-responsive';
-
-import Visualizer from 'app/features/Visualizer';
-
+import { useLocation } from 'react-router';
 import { Column } from '../Column';
 import { ToolArea } from '../ToolArea';
 import { ToolTimelineWrapper } from 'app/features/ATC/components/ToolTimeline';

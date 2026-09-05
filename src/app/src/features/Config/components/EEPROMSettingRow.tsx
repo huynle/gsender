@@ -1,20 +1,20 @@
-import { useSettings } from 'app/features/Config/utils/SettingsContext.tsx';
-import { getDatatypeInput } from 'app/features/Config/utils/EEPROM.ts';
-import get from 'lodash/get';
-import { BiReset } from 'react-icons/bi';
-import cn from 'classnames';
 import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib.ts';
-import { FaMicrochip } from 'react-icons/fa6';
-import { ToolLink } from 'app/features/Config/components/wizards/SquaringToolWizard.tsx';
 import Tooltip from 'app/components/Tooltip';
+import { GRBLHAL } from 'app/constants';
 import { EEPROM } from 'app/definitions/firmware';
-import { RootState } from 'app/store/redux';
-import { useSelector } from 'react-redux';
+import { ToolLink } from 'app/features/Config/components/wizards/SquaringToolWizard.tsx';
+import { getDatatypeInput } from 'app/features/Config/utils/EEPROM.ts';
 import {
     resolveGrblCoreDefaults,
     translateGrblCoreKey,
 } from 'app/features/Config/utils/grblCoreMigration.ts';
-import { GRBLHAL } from 'app/constants';
+import { useSettings } from 'app/features/Config/utils/SettingsContext.tsx';
+import { RootState } from 'app/store/redux';
+import cn from 'classnames';
+import get from 'lodash/get';
+import { BiReset } from 'react-icons/bi';
+import { FaMicrochip } from 'react-icons/fa6';
+import { useSelector } from 'react-redux';
 
 interface EEPROMSettingRowProps {
     eID: string;
@@ -92,12 +92,12 @@ export function EEPROMSettingRow({
                 className={cn(
                     'p-2 flex flex-row flex-wrap items-center border-b border-gray-200',
                     {
-                        'odd:bg-yellow-50 even:bg-yellow-50 dark:bg-blue-900 dark:text-white':
+                        'odd:bg-yellow-50 even:bg-yellow-50 dark:bg-blue-900 dark:text-content-primary':
                             !isDefault,
                     },
                 )}
             >
-                <div className="w-full sm:w-1/5 flex flex-row gap-2 items-center justify-between sm:justify-start text-gray-700 relative dark:text-gray-400 mb-2 sm:mb-0">
+                <div className="w-full sm:w-1/5 flex flex-row gap-2 items-center justify-between sm:justify-start text-gray-700 relative dark:text-content-muted mb-2 sm:mb-0">
                     <span>{EEPROMData.description}</span>
                     <span className="flex flex-row gap-2 sm:hidden">
                         {!isDefault && (
@@ -130,7 +130,7 @@ export function EEPROMSettingRow({
                         </Tooltip>
                     </span>
                 </div>
-                <span className="w-full sm:w-2/5 text-gray-500 text-sm mb-2 max-sm:mb-4 order-4">
+                <span className="w-full sm:w-2/5 text-gray-500 dark:text-content-secondary text-sm mb-2 max-sm:mb-4 order-4">
                     {detailString}
                 </span>
                 <div

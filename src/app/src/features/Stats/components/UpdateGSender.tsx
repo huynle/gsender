@@ -1,8 +1,8 @@
-import ReactParse from 'html-react-parser';
-import { useEffect, useState } from 'react';
 import { DownloadGSender } from 'app/features/Stats/components/DownloadGSender.tsx';
-import { FaExternalLinkAlt } from 'react-icons/fa';
+import ReactParse from 'html-react-parser';
 import isElectron from 'is-electron';
+import { useEffect, useState } from 'react';
+import { FaExternalLinkAlt } from 'react-icons/fa';
 
 export function UpdateGSender({
     notes = {
@@ -41,7 +41,7 @@ export function UpdateGSender({
             />
             <div className="col-span-2 flex flex-col">
                 <div className="flex gap-2 items-center justify-between">
-                    <h2 className="text-2xl font-bold dark:text-white">
+                    <h2 className="text-2xl font-bold dark:text-content-primary">
                         What's new in v{version}
                     </h2>
                     <a
@@ -57,7 +57,7 @@ export function UpdateGSender({
                     </a>
                 </div>
                 <div className="relative h-full">
-                    <div className="absolute top-0 left-0 w-full h-full overflow-y-auto border border-gray-300 rounded-md p-4 dark:text-white">
+                    <div className="absolute top-0 left-0 w-full h-full overflow-y-auto border border-gray-300 rounded-md p-4 dark:text-content-primary">
                         {ReactParse(releaseNotes)}
                     </div>
                 </div>

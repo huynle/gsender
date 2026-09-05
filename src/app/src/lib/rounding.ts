@@ -21,8 +21,12 @@
  *
  */
 
+import type {
+    BasicObject,
+    UNITS_EN,
+    UNITS_GCODE,
+} from 'app/definitions/general';
 import { METRIC_UNITS } from '../constants';
-import { BasicObject, UNITS_EN, UNITS_GCODE } from 'app/definitions/general';
 
 const storeValuesThatNeedRounding = new Set([
     'workspace.safeRetractHeight',
@@ -136,7 +140,7 @@ export const determineRoundedValue = (key: string, value: any): any => {
 
     // if object, recurse
     if (isObject && !isArray) {
-        let newVal: BasicObject = {};
+        const newVal: BasicObject = {};
         Object.keys(value as BasicObject).forEach((el, _index) => {
             newVal[el] = determineRoundedValue(key + '.' + el, value[el]);
         });
@@ -153,6 +157,9 @@ export const determineRoundedValue = (key: string, value: any): any => {
 
 // round up to decimalPoints only
 // https://stackoverflow.com/a/32229831
-export const toFixedIfNecessary = (value: string | number, decimalPoints: number) => {
+export const toFixedIfNecessary = (
+    value: string | number,
+    decimalPoints: number,
+) => {
     return +parseFloat(String(value)).toFixed(decimalPoints);
-}
+};

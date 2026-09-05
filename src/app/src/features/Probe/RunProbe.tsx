@@ -21,8 +21,6 @@
  *
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-
 import {
     Dialog,
     DialogContent,
@@ -42,13 +40,14 @@ import { PROBING_CATEGORY } from 'app/constants';
 import useKeybinding from 'app/lib/useKeybinding';
 import useShuttleEvents from 'app/hooks/useShuttleEvents';
 import {
-    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
-    TOUCHPLATE_TYPE_3D_ADVANCED,
     is3DFamily,
-    routineUsesCorner,
-    PROBE_ROUTINE_BOSS_CENTER,
     isCentreFindingRoutine,
+    PROBE_ROUTINE_BOSS_CENTER,
+    routineUsesCorner,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
 } from 'app/lib/constants';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface RunProbeProps {
     state: State;

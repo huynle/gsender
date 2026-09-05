@@ -21,14 +21,16 @@
  *
  */
 
-import { useEffect, useState } from 'react';
-import { connect } from 'react-redux';
+import type { GRBL_ACTIVE_STATES_T } from 'app/definitions/general';
+import {
+    isATCAvailable,
+    sendATCHomingDialog,
+} from 'app/features/ATC/utils/ATCFunctions.ts';
+import { UnlockButton as SmallUnlockButton } from 'app/features/UnlockButton';
 import cx from 'classnames';
 import get from 'lodash/get';
-import controller from '../../lib/controller';
-import AlarmDescriptionIcon from './AlarmDescriptionIcon';
-import UnlockButton from './UnlockButton';
-import { UnlockButton as SmallUnlockButton } from 'app/features/UnlockButton';
+import { useEffect, useState } from 'react';
+import { connect } from 'react-redux';
 import {
     GRBL_ACTIVE_STATE_ALARM,
     GRBL_ACTIVE_STATE_CHECK,
@@ -40,18 +42,21 @@ import {
     GRBL_ACTIVE_STATE_RUN,
     GRBL_ACTIVE_STATE_TOOL,
 } from '../../constants';
-import { GRBL_ACTIVE_STATES_T } from 'app/definitions/general';
-import { ALARM_CODE } from './definitions';
-import {
-    isATCAvailable,
-    sendATCHomingDialog,
-} from 'app/features/ATC/utils/ATCFunctions.ts';
+import controller from '../../lib/controller';
+import AlarmDescriptionIcon from './AlarmDescriptionIcon';
+import type { ALARM_CODE } from './definitions';
+import UnlockButton from './UnlockButton';
 
 interface MachineStatusProps {
     alarmCode: ALARM_CODE;
     activeState: GRBL_ACTIVE_STATES_T | null;
     isConnected: boolean;
     port: string | null;
+    // A plugin can assert the machine is busy for the span of a feeder-driven
+    // operation; while set, we hold a stable "running" status instead of letting
+    // the pill flicker Idle as the feeder drains between moves.
+    pluginBusy: boolean;
+    pluginBusyLabel: string | null;
 }
 
 interface Message {
@@ -68,6 +73,8 @@ const MachineStatus: React.FC<MachineStatusProps> = ({
     alarmCode,
     isConnected,
     port,
+    pluginBusy,
+    pluginBusyLabel,
 }) => {
     const isPortOpen = isConnected || !!port;
     const [hasFreshControllerState, setHasFreshControllerState] = useState(
@@ -75,6 +82,18 @@ const MachineStatus: React.FC<MachineStatusProps> = ({
     );
     const displayActiveState =
         isPortOpen && hasFreshControllerState ? activeState : null;
+
+    // A plugin-asserted busy latch shows a stable label across the whole operation
+    // instead of letting the pill alternate "Running"/label as the feeder drains
+    // between moves. It only overrides the normal operational states (Idle/Run/
+    // Jog/Check) — safety-relevant states like Alarm/Hold/Door/Tool must always
+    // show through.
+    const showPluginBusy =
+        pluginBusy &&
+        (displayActiveState === GRBL_ACTIVE_STATE_IDLE ||
+            displayActiveState === GRBL_ACTIVE_STATE_RUN ||
+            displayActiveState === GRBL_ACTIVE_STATE_JOG ||
+            displayActiveState === GRBL_ACTIVE_STATE_CHECK);
 
     useEffect(() => {
         if (!isPortOpen) {
@@ -100,7 +119,10 @@ const MachineStatus: React.FC<MachineStatusProps> = ({
         return () => {
             controller.removeListener('serialport:open', handlePortOpen);
             controller.removeListener('serialport:close', handlePortClose);
-            controller.removeListener('controller:state', handleControllerState);
+            controller.removeListener(
+                'controller:state',
+                handleControllerState,
+            );
         };
     }, []);
 
@@ -158,14 +180,16 @@ const MachineStatus: React.FC<MachineStatusProps> = ({
                     className={cx(
                         'transition-colors duration-100 ease-in-out flex max-sm:w-40 max-sm:text-normal w-72 h-[60px] justify-between items-center [clip-path:_polygon(0%_0%,_100%_0%,_85%_100%,_15%_100%)]',
                         {
-                            'text-white bg-gray-800':
-                                !displayActiveState,
+                            'text-white bg-gray-800': !displayActiveState,
                             'bg-gray-500 text-white':
-                                displayActiveState === GRBL_ACTIVE_STATE_IDLE,
+                                displayActiveState === GRBL_ACTIVE_STATE_IDLE &&
+                                !showPluginBusy,
                             'bg-green-600 text-white':
                                 displayActiveState === GRBL_ACTIVE_STATE_RUN ||
                                 displayActiveState === GRBL_ACTIVE_STATE_JOG ||
-                                displayActiveState === GRBL_ACTIVE_STATE_CHECK,
+                                displayActiveState ===
+                                    GRBL_ACTIVE_STATE_CHECK ||
+                                showPluginBusy,
                             'bg-blue-500 text-white':
                                 displayActiveState === GRBL_ACTIVE_STATE_HOME,
                             'bg-yellow-600 text-white':
@@ -197,7 +221,9 @@ const MachineStatus: React.FC<MachineStatusProps> = ({
                                 </div>
                             ) : (
                                 <span className="flex w-full font-light text-3xl max-sm:text-base sm:text-normal mb-1 justify-center">
-                                    {message[displayActiveState]}
+                                    {showPluginBusy
+                                        ? (pluginBusyLabel ?? 'Running')
+                                        : message[displayActiveState]}
                                 </span>
                             )}
                         </>
@@ -232,18 +258,18 @@ export default connect((store) => {
     const $22 = get(store, 'controller.settings.settings.$22', '0');
     const alarmCode = get(store, 'controller.state.status.alarmCode', 0);
 
-    const activeState = get(
-        store,
-        'controller.state.status.activeState',
-        null,
-    );
+    const activeState = get(store, 'controller.state.status.activeState', null);
     const isConnected = get(store, 'connection.isConnected', false);
     const port = get(store, 'connection.port', null);
+    const pluginBusy = get(store, 'pluginState.busy', false);
+    const pluginBusyLabel = get(store, 'pluginState.label', null);
     return {
         $22,
         alarmCode,
         activeState,
         isConnected,
         port,
+        pluginBusy,
+        pluginBusyLabel,
     };
 })(MachineStatus);

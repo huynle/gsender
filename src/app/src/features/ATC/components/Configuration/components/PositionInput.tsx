@@ -1,15 +1,15 @@
-import React from 'react';
 import { Button } from 'app/components/Button';
 import { Input } from 'app/components/shadcn/Input';
 import { Label } from 'app/components/shadcn/Label';
-import { Position } from 'app/features/ATC/components/Configuration/hooks/useConfigStore';
-import { FiTarget } from 'react-icons/fi';
+import type { Position } from 'app/features/ATC/components/Configuration/hooks/useConfigStore';
 import { useWorkspaceState } from 'app/hooks/useWorkspaceState.ts';
 import { mapPositionToUnits } from 'app/lib/units.ts';
+import cn from 'classnames';
 import map from 'lodash/map';
 import mapValues from 'lodash/mapValues';
-import cn from 'classnames';
 import { AlertCircle } from 'lucide-react';
+import type React from 'react';
+import { FiTarget } from 'react-icons/fi';
 
 interface PositionInputProps {
     label: string;
@@ -41,7 +41,9 @@ export const PositionInput: React.FC<PositionInputProps> = ({
     hideLabel = false,
 }) => {
     const { units } = useWorkspaceState();
-    const hasSecondaryAction = Boolean(secondaryActionLabel && onSecondaryAction);
+    const hasSecondaryAction = Boolean(
+        secondaryActionLabel && onSecondaryAction,
+    );
     const validateZ = !disableZ && !hideZ;
     const hasZeroAxis =
         !disabled &&
@@ -70,7 +72,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
     return (
         <div className="flex flex-wrap items-start gap-3 py-1 w-full">
             {!hideLabel && (
-                <Label className="text-xs font-medium text-gray-700 dark:text-white">
+                <Label className="text-xs font-medium text-gray-700 dark:text-content-primary">
                     {label}
                 </Label>
             )}
@@ -80,7 +82,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                         'flex flex-col gap-2 rounded-md border p-2 w-full flex-1',
                         hasZeroAxis
                             ? 'border-orange-400 bg-orange-50/10 dark:bg-orange-900/20'
-                            : 'border-gray-200 dark:border-slate-700 dark:bg-slate-800',
+                            : 'border-gray-200 dark:border-outline dark:bg-surface-elevated',
                     )}
                     style={
                         hasZeroAxis
@@ -93,7 +95,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                 >
                     <div className="flex items-center gap-2 flex-wrap">
                         <div className="flex items-center gap-1 flex-1 min-w-[6.5rem]">
-                            <Label className="text-xs text-muted-foreground dark:text-gray-300 w-4">
+                            <Label className="text-xs text-muted-foreground dark:text-content-secondary w-4">
                                 X:
                             </Label>
                             <Input
@@ -104,7 +106,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                                     handleAxisChange('x', e.target.value)
                                 }
                                 className={cn(
-                                    'w-full h-8 text-xs border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-blue-500',
+                                    'w-full h-8 text-xs border-gray-300 dark:border-outline dark:bg-surface-sunken dark:text-content-primary focus:border-blue-500 focus:ring-blue-500',
                                     hasZeroAxis &&
                                         'border-orange-400 focus:border-orange-500 focus:ring-orange-500',
                                 )}
@@ -112,7 +114,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                             />
                         </div>
                         <div className="flex items-center gap-1 flex-1 min-w-[6.5rem]">
-                            <Label className="text-xs text-muted-foreground dark:text-gray-300 w-4">
+                            <Label className="text-xs text-muted-foreground dark:text-content-secondary w-4">
                                 Y:
                             </Label>
                             <Input
@@ -123,7 +125,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                                     handleAxisChange('y', e.target.value)
                                 }
                                 className={cn(
-                                    'w-full h-8 text-xs border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-blue-500',
+                                    'w-full h-8 text-xs border-gray-300 dark:border-outline dark:bg-surface-sunken dark:text-content-primary focus:border-blue-500 focus:ring-blue-500',
                                     hasZeroAxis &&
                                         'border-orange-400 focus:border-orange-500 focus:ring-orange-500',
                                 )}
@@ -137,7 +139,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                                     disableZ && 'max-xl:hidden',
                                 )}
                             >
-                                <Label className="text-xs text-muted-foreground dark:text-gray-300 w-4">
+                                <Label className="text-xs text-muted-foreground dark:text-content-secondary w-4">
                                     Z:
                                 </Label>
                                 <Input
@@ -148,7 +150,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                                         handleAxisChange('z', e.target.value)
                                     }
                                     className={cn(
-                                        'w-full h-8 text-xs border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-blue-500',
+                                        'w-full h-8 text-xs border-gray-300 dark:border-outline dark:bg-surface-sunken dark:text-content-primary focus:border-blue-500 focus:ring-blue-500',
                                         hasZeroAxis &&
                                             'border-orange-400 focus:border-orange-500 focus:ring-orange-500',
                                     )}
@@ -186,10 +188,7 @@ export const PositionInput: React.FC<PositionInputProps> = ({
                 </div>
             </div>
             <div
-                className={cn(
-                    'h-9 w-9 shrink-0',
-                    !hasZeroAxis && 'invisible',
-                )}
+                className={cn('h-9 w-9 shrink-0', !hasZeroAxis && 'invisible')}
             >
                 <div className="h-9 w-9 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-sm ring-2 ring-orange-200 dark:ring-orange-900/50">
                     <AlertCircle className="h-6 w-6" />

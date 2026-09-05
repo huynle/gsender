@@ -1,10 +1,8 @@
-import { FaExternalLinkAlt } from 'react-icons/fa';
-import isElectron from 'is-electron';
-
+import { usePostHog } from '@posthog/react';
 import Tooltip from 'app/components/Tooltip';
 import { toast } from 'app/lib/toaster';
-
-import { usePostHog } from 'posthog-js/react';
+import isElectron from 'is-electron';
+import { FaExternalLinkAlt } from 'react-icons/fa';
 
 export function ConsolePopout() {
     const posthog = usePostHog();
@@ -13,7 +11,7 @@ export function ConsolePopout() {
         const route = `/console`;
         if (isElectron()) {
             window.ipcRenderer.send('open-new-window', route);
-            posthog.capture('console_popout_opened');
+            posthog?.capture('console_popout_opened');
         } else {
             toast.info('This functionality is not available on web view.', {
                 position: 'bottom-right',

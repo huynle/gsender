@@ -21,20 +21,21 @@
  *
  */
 
-import { Slider } from 'app/components/shadcn/Slider';
-import { Input } from 'app/components/shadcn/Input';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
-import { FaBan, FaRedoAlt, FaUndoAlt } from 'react-icons/fa';
 import { ActiveStateButton } from 'app/components/ActiveStateButton';
+import { Input } from 'app/components/shadcn/Input';
+import { Slider } from 'app/components/shadcn/Slider';
 import Tooltip from 'app/components/Tooltip';
-import { useState, useEffect } from 'react';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
 import store from 'app/store';
+import { useEffect, useState } from 'react';
+import { FaBan, FaRedoAlt, FaUndoAlt } from 'react-icons/fa';
+import type { SendM5Type } from '../definitions';
 
 type Props = {
     actions: {
         sendM3: () => void;
         sendM4: () => void;
-        sendM5: () => void;
+        sendM5: (sendM5Type: SendM5Type) => void;
         handleSpindleSpeedChange: (value: number) => void;
     };
     state: {
@@ -119,7 +120,7 @@ const SpindleControls = ({ actions, state, canClick, isConnected }: Props) => {
                     aria-label="Start spindle counterclockwise (M4)"
                 />
                 <ActiveStateButton
-                    onClick={actions.sendM5}
+                    onClick={() => actions.sendM5({ type: 'spindle' })}
                     disabled={!canClick}
                     icon={<FaBan />}
                     text="Stop"
@@ -129,7 +130,7 @@ const SpindleControls = ({ actions, state, canClick, isConnected }: Props) => {
                     aria-label="Stop spindle (M5)"
                 />
             </div>
-            <div className="grid grid-cols-[1fr_3fr_1fr] gap-2 justify-center items-center dark:text-white">
+            <div className="grid grid-cols-[1fr_3fr_1fr] gap-2 justify-center items-center dark:text-content-primary">
                 <span className="text-right">Speed</span>
                 {inputType === 'Slider' ? (
                     <Tooltip content="Adjust spindle speed" side="bottom">

@@ -1,5 +1,3 @@
-import { StepProps } from 'app/features/AccessoryInstaller/types';
-import { StepActionButton } from 'app/features/AccessoryInstaller/components/wizard/StepActionButton.tsx';
 import { PositionSetter } from 'app/features/AccessoryInstaller/Wizards/atc/components/PositionSetter.tsx';
 import { useSelector } from 'react-redux';
 import { RootState } from 'app/store/redux';
@@ -10,6 +8,8 @@ import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
 import { mapPositionToUnits, in2mm } from 'app/lib/units.ts';
 import { IMPERIAL_UNITS } from 'app/constants';
 import pubsub from 'pubsub-js';
+import { StepProps } from 'app/components/Wizard/types';
+import { StepActionButton } from 'app/components/Wizard/StepActionButton.tsx';
 
 type Position = { x?: number; y?: number; z?: number };
 
@@ -30,7 +30,13 @@ export function TLSLocation({ onComplete, onUncomplete }: StepProps) {
 
     useEffect(() => {
         if (isManuallyEditing.current) return;
-        if (!mpos || mpos.x === undefined || mpos.y === undefined || mpos.z === undefined) return;
+        if (
+            !mpos ||
+            mpos.x === undefined ||
+            mpos.y === undefined ||
+            mpos.z === undefined
+        )
+            return;
 
         if (isComplete && !mposEquals(mpos, lastSetMposRef.current)) {
             setIsComplete(false);
@@ -70,16 +76,17 @@ export function TLSLocation({ onComplete, onUncomplete }: StepProps) {
 
     return (
         <div className="flex flex-col gap-5 justify-start">
-            <p className="dark:text-white">
-                Install the tallest bit you own in your spindle or router.
-                Jog until it's positioned just above (10-20mm) the Tool Length Sensor,
-                then set the position using the <b>"Set Position"</b> button.
+            <p className="dark:text-content-primary">
+                Install the tallest bit you own in your spindle or router. Jog
+                until it's positioned just above (10-20mm) the Tool Length
+                Sensor, then set the position using the <b>"Set Position"</b>{' '}
+                button.
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="text-sm text-gray-600 dark:text-content-secondary">
                 Using your tallest tool gives the most Z-axis clearance above
-                the sensor, so its measured position ends up negative — this
-                is what lets gSender accurately probe tools of any length
-                during a tool change without running out of travel.
+                the sensor, so its measured position ends up negative — this is
+                what lets gSender accurately probe tools of any length during a
+                tool change without running out of travel.
             </p>
             <PositionSetter
                 showZ={true}

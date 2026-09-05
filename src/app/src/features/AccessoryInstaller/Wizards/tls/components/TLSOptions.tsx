@@ -1,16 +1,16 @@
-import { StepProps } from 'app/features/AccessoryInstaller/types';
-import { StepActionButton } from 'app/features/AccessoryInstaller/components/wizard/StepActionButton.tsx';
-import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import get from 'lodash/get';
-import store from 'app/store';
 import { RootState } from 'app/store/redux';
 import { FirstToolBehavior } from 'app/workspace/definitions';
 import { updateToolchangeContext } from 'app/features/Helper/Wizard.tsx';
-import pubsub from 'pubsub-js';
-import controller from "app/lib/controller.ts";
+import controller from 'app/lib/controller.ts';
 import { firmwarePastVersion } from 'app/lib/firmwareSemver.ts';
+import store from 'app/store';
+import pubsub from 'pubsub-js';
+import { useState } from 'react';
 import { ATCI_SUPPORTED_VERSION } from 'app/features/ATC/utils/ATCiConstants.ts';
+import { StepActionButton } from 'app/components/Wizard/StepActionButton.tsx';
+import { StepProps } from 'app/components/Wizard/types';
 
 const FIRST_TOOL_BEHAVIOUR_OPTIONS: FirstToolBehavior[] = [
     'Always run full wizard',
@@ -60,10 +60,7 @@ export function TLSOptions({ onComplete, onUncomplete }: StepProps) {
         controller.command('gcode', code);
 
         store.set('workspace.toolChangeOption', 'Fixed Tool Sensor');
-        store.set(
-            'workspace.toolChange.moveToManualPosition',
-            customLocation,
-        );
+        store.set('workspace.toolChange.moveToManualPosition', customLocation);
         store.set(
             'workspace.toolChange.firstToolBehaviour',
             firstToolBehaviour,
@@ -79,13 +76,13 @@ export function TLSOptions({ onComplete, onUncomplete }: StepProps) {
 
     return (
         <div className="flex flex-col gap-5 justify-start">
-            <p className="dark:text-white">
-                Configure how gSender should handle tool changes with your
-                Tool Length Sensor (TLS).
+            <p className="dark:text-content-primary">
+                Configure how gSender should handle tool changes with your Tool
+                Length Sensor (TLS).
             </p>
 
             <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-content-primary mb-2">
                     First tool behaviour
                 </label>
                 <select
@@ -103,7 +100,7 @@ export function TLSOptions({ onComplete, onUncomplete }: StepProps) {
                         </option>
                     ))}
                 </select>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                <p className="text-sm text-gray-600 dark:text-content-secondary mt-2">
                     {FIRST_TOOL_BEHAVIOUR_EXPLANATIONS[firstToolBehaviour]}
                 </p>
             </div>
@@ -116,10 +113,10 @@ export function TLSOptions({ onComplete, onUncomplete }: StepProps) {
                     className="w-6 h-6 mt-0.5 shrink-0 rounded-md border-2 border-gray-300 accent-blue-500 cursor-pointer transition-colors hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 />
                 <span>
-                    <span className="block text-lg font-semibold text-gray-900 dark:text-white">
+                    <span className="block text-lg font-semibold text-gray-900 dark:text-content-primary">
                         Set manual tool change location
                     </span>
-                    <span className="block text-sm text-gray-600 dark:text-gray-300">
+                    <span className="block text-sm text-gray-600 dark:text-content-secondary">
                         Move the CNC to a more convenient location for manual
                         tool changes instead of prompting to change over the
                         sensor.
@@ -127,9 +124,9 @@ export function TLSOptions({ onComplete, onUncomplete }: StepProps) {
                 </span>
             </label>
 
-            <p className="dark:text-white">
-                Select <b>"Apply"</b> to set your tool change strategy to
-                Fixed Tool Sensor and save these options.
+            <p className="dark:text-content-primary">
+                Select <b>"Apply"</b> to set your tool change strategy to Fixed
+                Tool Sensor and save these options.
             </p>
             <StepActionButton
                 label={'Apply'}

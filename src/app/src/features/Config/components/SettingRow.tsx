@@ -1,37 +1,39 @@
-import React, { JSX } from 'react';
-import {
+/** biome-ignore-all lint/a11y/useButtonType: <> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: <> */
+/** biome-ignore-all lint/suspicious/noArrayIndexKey: <> */
+import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib.ts';
+import Tooltip from 'app/components/Tooltip';
+import { GRBLHAL } from 'app/constants';
+import type { EEPROM } from 'app/definitions/firmware';
+import type {
     gSenderSetting,
     gSenderSettingsValues,
 } from 'app/features/Config/assets/SettingsMenu.ts';
+import { EEPROMSettingRow } from 'app/features/Config/components/EEPROMSettingRow.tsx';
 import { BooleanSettingInput } from 'app/features/Config/components/SettingInputs/BooleanSettingInput.tsx';
-import { SelectSettingInput } from 'app/features/Config/components/SettingInputs/SelectSettingInput.tsx';
+import { EventInput } from 'app/features/Config/components/SettingInputs/EventInput.tsx';
+import { IPSettingInput } from 'app/features/Config/components/SettingInputs/IP.tsx';
+import { JogInput } from 'app/features/Config/components/SettingInputs/JogInput.tsx';
+import { LocationInput } from 'app/features/Config/components/SettingInputs/LocationInput.tsx';
 import { NumberSettingInput } from 'app/features/Config/components/SettingInputs/NumberSettingInput.tsx';
 import { RadioSettingInput } from 'app/features/Config/components/SettingInputs/RadioSettingInput.tsx';
-import { IPSettingInput } from 'app/features/Config/components/SettingInputs/IP.tsx';
-import { HybridNumber } from 'app/features/Config/components/SettingInputs/HybridNumber.tsx';
+import { SelectSettingInput } from 'app/features/Config/components/SettingInputs/SelectSettingInput.tsx';
+import { TextAreaInput } from 'app/features/Config/components/SettingInputs/TextAreaInput.tsx';
 import { useSettings } from 'app/features/Config/utils/SettingsContext.tsx';
-import { EEPROMSettingRow } from 'app/features/Config/components/EEPROMSettingRow.tsx';
-import { EventInput } from 'app/features/Config/components/SettingInputs/EventInput.tsx';
 import controller from 'app/lib/controller.ts';
 import { toast } from 'app/lib/toaster';
-import { TextAreaInput } from 'app/features/Config/components/SettingInputs/TextAreaInput.tsx';
-import { LocationInput } from 'app/features/Config/components/SettingInputs/LocationInput.tsx';
-import cn from 'classnames';
-import { BiReset } from 'react-icons/bi';
-import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib.ts';
 import store from 'app/store';
-import { FaMicrochip } from 'react-icons/fa6';
-import { GRBLHAL } from 'app/constants';
-import { JogInput } from 'app/features/Config/components/SettingInputs/JogInput.tsx';
-import Tooltip from 'app/components/Tooltip';
+import cn from 'classnames';
 import pubsub from 'pubsub-js';
-import { EEPROM } from 'app/definitions/firmware';
+import React, { type JSX } from 'react';
+import { BiReset } from 'react-icons/bi';
+import PathSelection from './SettingInputs/PathSelection';
 
 interface SettingRowProps {
     setting: gSenderSetting;
     index?: number;
     subIndex?: number;
-    changeHandler: (v: any) => void;
+    changeHandler: (v: any) => any;
 }
 
 function returnSettingControl(
@@ -39,7 +41,7 @@ function returnSettingControl(
     setting: gSenderSetting,
     value: gSenderSettingsValues = 0,
     index: number = -1,
-    handler,
+    handler: (v: any) => void,
 ) {
     switch (setting.type) {
         case 'boolean':
@@ -128,6 +130,14 @@ function returnSettingControl(
                     onChange={handler}
                 />
             );
+        case 'path':
+            return (
+                <PathSelection
+                    value={value as string}
+                    index={index}
+                    onChange={handler}
+                />
+            );
         default:
             return setting.type;
     }
@@ -156,7 +166,7 @@ export const SettingRow = React.memo(function SettingRow({
         setting.type === 'hybrid' && firmwareType === GRBLHAL;
     // Default function to not hidden
     let isHidden = false;
-    if (setting && setting.hidden) {
+    if (setting?.hidden) {
         isHidden = setting.hidden(getPendingOrStore);
     }
     if (setting.hideWhenFirmwareCurrent && isFirmwareCurrent) {
@@ -208,7 +218,7 @@ export const SettingRow = React.memo(function SettingRow({
                 Object.hasOwn(setting, 'remap') && isFirmwareCurrent
                     ? setting.remap
                     : setting.eID;
-            let eepromValue = EEPROM.filter(
+            const eepromValue = EEPROM.filter(
                 (o) => o.setting === effectiveEID,
             )[0];
             if (eepromValue) {
@@ -239,12 +249,35 @@ export const SettingRow = React.memo(function SettingRow({
                 });
             }
         }
+        // resetting to default is the same as clicking "Apply Settings", so
+        // run the same onApply side effect updateAllSettings would run
+        setting.onApply?.();
         pubsub.publish('programSettingReset', setting.key);
     }
 
     const populatedValue = settingsValues[setting.globalIndex] || {
         type: 'text',
     };
+
+    // switching this setting away from a folder stops gSender from scanning it, so warn the user
+    function getResetConfirmContent(setting: gSenderSetting) {
+        if (setting.key === 'workspace.userPluginsDir' && setting.value) {
+            return (
+                <div className="flex flex-col gap-2 text-left">
+                    <p>Resetting this will stop gSender from scanning:</p>
+                    <p className="w-full break-all rounded-md ring-1 ring-gray-300 dark:ring-outline bg-gray-50 dark:bg-surface-sunken font-mono text-xs p-2">
+                        {setting.value}
+                    </p>
+                    <p>
+                        Plugins imported there will disappear from the Plugin
+                        Manager until you set this back. Are you sure you want
+                        to reset this value to default?
+                    </p>
+                </div>
+            );
+        }
+        return 'Are you sure you want to reset this value to default?';
+    }
 
     // if EEPROM or Hybrid and not connected, show nothing
     if (
@@ -285,12 +318,12 @@ export const SettingRow = React.memo(function SettingRow({
                 'p-2 flex flex-row flex-wrap items-center text-gray-700 border-b border-gray-200',
                 {
                     hidden: isHidden,
-                    'odd:bg-yellow-50 even:bg-yellow-50 dark:bg-blue-900 dark:text-white':
+                    'odd:bg-yellow-50 even:bg-yellow-50 dark:bg-blue-900 dark:text-content-primary':
                         !isDefault,
                 },
             )}
         >
-            <span className="w-full sm:w-1/5 font-xl sm:mb-0 mb-2 dark:text-gray-400 flex items-center justify-between sm:block ">
+            <span className="w-full sm:w-1/5 font-xl sm:mb-0 mb-2 dark:text-content-muted flex items-center justify-between sm:block ">
                 <span>{setting.label}</span>
                 <span className="sm:hidden flex flex-row gap-2">
                     {!isDefault && (
@@ -302,7 +335,9 @@ export const SettingRow = React.memo(function SettingRow({
                                     Confirm({
                                         title: 'Reset setting',
                                         content:
-                                            'Are you sure you want to reset this value to default?',
+                                            getResetConfirmContent(
+                                                populatedValue,
+                                            ),
                                         confirmLabel: 'Yes',
                                         onConfirm: () => {
                                             handleProgramSettingReset(
@@ -319,12 +354,14 @@ export const SettingRow = React.memo(function SettingRow({
                     <span className="text-robin-500 min-w-9" />
                 </span>
             </span>
-            <span className="w-full sm:w-2/5 order-2 sm:order-3 text-gray-500 text-sm flex flex-col gap-2 max-sm:mb-4 mb-2">
-                {setting.description.split('\n').map((line, index) => (
-                    <p key={index}>{line}</p>
-                ))}
+            <span className="w-full sm:w-2/5 order-2 sm:order-3 text-gray-500 dark:text-content-secondary text-sm flex flex-col gap-2 max-sm:mb-4 mb-2">
+                {setting.description
+                    .split('\n')
+                    .map((line: string, index: number) => (
+                        <p key={index}>{line}</p>
+                    ))}
             </span>
-            <span className="w-full sm:w-1/5 sm:order-none order-3 text-xs px-4 dark:text-gray-200 sm:mb-0  max-sm:mb-2 mb-0">
+            <span className="w-full sm:w-1/5 sm:order-none order-3 text-xs px-4 dark:text-content-secondary sm:mb-0  max-sm:mb-2 mb-0">
                 {returnSettingControl(
                     connected,
                     displaySetting,
@@ -345,7 +382,7 @@ export const SettingRow = React.memo(function SettingRow({
                                 Confirm({
                                     title: 'Reset setting',
                                     content:
-                                        'Are you sure you want to reset this value to default?',
+                                        getResetConfirmContent(populatedValue),
                                     confirmLabel: 'Yes',
                                     onConfirm: () => {
                                         handleProgramSettingReset(

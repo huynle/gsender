@@ -1,10 +1,11 @@
-import { useContext } from 'react';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
-
-import shuttleEvents from 'app/lib/shuttleEvents';
+import { Input } from 'app/components/shadcn/Input';
 import { useGamepadListener } from 'app/lib/hooks/useGamepadListener';
 
-import { GamepadContext } from '../../utils/context';
+import shuttleEvents from 'app/lib/shuttleEvents';
+import classNames from 'classnames';
+import get from 'lodash/get';
+import { useContext } from 'react';
+import { FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
 import { arrayComparator } from '../../utils';
 import {
     setCurrentGamepadProfileButton,
@@ -12,10 +13,7 @@ import {
     setGamepadProfileList,
 } from '../../utils/actions';
 import { GAMEPAD_MODAL } from '../../utils/constants';
-
-import get from 'lodash/get';
-import classNames from 'classnames';
-import { Input } from 'app/components/shadcn/Input';
+import { GamepadContext } from '../../utils/context';
 
 const ButtonActionsTable = () => {
     const {
@@ -169,8 +167,8 @@ const ButtonActionsTable = () => {
                 macros.find((el) => el.cmd === action);
 
             return (
-                <div className="grid grid-cols-[2fr_auto] justify-between items-center p-2 border border-gray-300 rounded dark:border-gray-700 gap-3">
-                    <span className="inline-block text-ellipsis overflow-hidden whitespace-nowrap dark:text-white">
+                <div className="grid grid-cols-[2fr_auto] justify-between items-center p-2 border border-gray-300 rounded dark:border-outline gap-3">
+                    <span className="inline-block text-ellipsis overflow-hidden whitespace-nowrap dark:text-content-primary">
                         {event?.title ?? action}
                     </span>
 
@@ -242,7 +240,9 @@ const ButtonActionsTable = () => {
         modifier: (_, row) => {
             return (
                 <div className="flex justify-between items-center p-2">
-                    <div className="dark:text-white">Activate 2nd Actions</div>
+                    <div className="dark:text-content-primary">
+                        Activate 2nd Actions
+                    </div>
                     <FaTrash
                         role="button"
                         tabIndex={0}
@@ -288,7 +288,7 @@ const ButtonActionsTable = () => {
         if (button.value === modifierButton) {
             return (
                 <td
-                    className={`p-2 dark:text-white dark:bg-dark ${buttonIsPressed ? activeStyles : inactiveStyles}`}
+                    className={`p-2 dark:text-content-primary dark:bg-surface-raised ${buttonIsPressed ? activeStyles : inactiveStyles}`}
                     colSpan={2}
                 >
                     {render.modifier(null, button)}
@@ -333,23 +333,23 @@ const ButtonActionsTable = () => {
     };
 
     return (
-        <table className="w-full border-collapse dark:bg-dark">
-            <thead className="dark:text-white">
+        <table className="w-full border-collapse dark:bg-surface-raised">
+            <thead className="dark:text-content-primary">
                 <tr>
                     <th
-                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-dark dark:text-white"
+                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-surface-raised dark:text-content-primary"
                         style={{ width: '20%', minWidth: '80px' }}
                     >
                         Button
                     </th>
                     <th
-                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-dark dark:text-white"
+                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-surface-raised dark:text-content-primary"
                         style={{ width: '40%' }}
                     >
                         Action
                     </th>
                     <th
-                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-dark dark:text-white"
+                        className="text-left p-2 bg-gray-100 border-b border-gray-300 dark:bg-surface-raised dark:text-content-primary"
                         style={{ width: '40%' }}
                     >
                         2nd Action
@@ -361,7 +361,7 @@ const ButtonActionsTable = () => {
                 {buttonsArr.map((button) => (
                     <tr
                         key={button.value}
-                        className="border-b border-gray-200 dark:border-gray-700"
+                        className="border-b border-gray-200 dark:border-outline"
                     >
                         <td className="p-2">{render.button(null, button)}</td>
 

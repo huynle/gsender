@@ -21,32 +21,50 @@
  *
  */
 
+import * as Sentry from '@sentry/electron/main';
+import chalk from 'chalk';
 import {
     app,
-    ipcMain,
+    clipboard,
     dialog,
-    powerSaveBlocker,
+    ipcMain,
     powerMonitor,
+    powerSaveBlocker,
     screen,
     session,
-    clipboard,
 } from 'electron';
-import { autoUpdater } from 'electron-updater';
-import Store from 'electron-store';
-import chalk from 'chalk';
-import mkdirp from 'mkdirp';
-import isOnline from 'is-online';
 import log from 'electron-log';
-import path from 'path';
+import Store from 'electron-store';
+import { autoUpdater } from 'electron-updater';
 import fs from 'fs';
-import * as Sentry from '@sentry/electron/main';
+import isOnline from 'is-online';
+import mkdirp from 'mkdirp';
+import path from 'path';
 import WinReg from 'winreg';
-import WindowManager from './electron-app/WindowManager';
-import launchServer from './server-cli';
-import pkg from './package.json';
-import { parseAndReturnGCode } from './electron-app/RecentFiles';
 import { asyncCallWithTimeout } from './electron-app/AsyncTimeout';
 import { getGRBLLog } from './electron-app/grblLogs';
+import { createPendantWindow } from './electron-app/pendant-window';
+import { parseAndReturnGCode } from './electron-app/RecentFiles';
+import WindowManager from './electron-app/WindowManager';
+import pkg from './package.json';
+import launchServer from './server-cli';
+
+// Reads the renderer's persisted settings directly, since the main process
+// needs to know "use pendant view as default UI" before any window exists.
+const readUsePendantViewSetting = () => {
+    try {
+        const configPath = path.join(
+            app.getPath('userData'),
+            'gsender-0.5.6.json',
+        );
+        if (!fs.existsSync(configPath)) return false;
+        const raw = JSON.parse(fs.readFileSync(configPath, 'utf8') || '{}');
+        return !!raw?.state?.workspace?.usePendantViewAsDefault;
+    } catch (err) {
+        log.error(`Failed to read pendant-view setting: ${err}`);
+        return false;
+    }
+};
 
 // Hot reload in development
 if (process.env.NODE_ENV === 'development') {
@@ -54,11 +72,7 @@ if (process.env.NODE_ENV === 'development') {
         require('electron-reloader')(module, {
             debug: false,
             watchRenderer: false, // Vite handles frontend
-            ignore: [
-                /node_modules/,
-                /output\/app/,
-                /\.map$/,
-            ],
+            ignore: [/node_modules/, /output\/app/, /\.map$/],
         });
     } catch (err) {
         // electron-reloader not available, continue without it
@@ -67,12 +81,14 @@ if (process.env.NODE_ENV === 'development') {
 
 let windowManager = null;
 let hostInformation = {};
-let grblLog = log.create('grbl');
+const grblLog = log.create('grbl');
 let logPath;
+let pluginPath;
 let powerBlockerNum = 0;
-const externalRendererUrl = process.env.NODE_ENV === 'development'
-    ? process.env.ELECTRON_RENDERER_URL
-    : '';
+const externalRendererUrl =
+    process.env.NODE_ENV === 'development'
+        ? process.env.ELECTRON_RENDERER_URL
+        : '';
 
 if (process.env.NODE_ENV === 'production') {
     Sentry.init({
@@ -99,7 +115,7 @@ const main = () => {
     }
 
     app.on('second-instance', (event, commandLine, workingDirectory) => {
-    // Someone tried to run a second instance, we should focus our window.
+        // Someone tried to run a second instance, we should focus our window.
         if (!windowManager) {
             return;
         }
@@ -110,8 +126,8 @@ const main = () => {
                 window.restore();
             }
             window.focus();
-            const filePath = commandLine.find(arg =>
-                /\.(gcode|gc|nc|tap|cnc)$/i.test(arg)
+            const filePath = commandLine.find((arg) =>
+                /\.(gcode|gc|nc|tap|cnc)$/i.test(arg),
             );
             if (filePath) {
                 loadFileAssociation(filePath, window);
@@ -150,6 +166,7 @@ const main = () => {
     // Extra logging
     logPath = path.join(app.getPath('userData'), 'logs/grbl.log');
     grblLog.transports.file.resolvePath = () => logPath;
+    pluginPath = path.join(app.getPath('userData'), 'plugins');
 
     const loadFileAssociation = async (filePath, window) => {
         try {
@@ -165,9 +182,52 @@ const main = () => {
         }
     };
 
+    const openDirectoryDialog = async () => {
+        try {
+            const gSenderWindow = windowManager.getWindow();
+            const directory = await dialog.showOpenDialog(gSenderWindow, {
+                properties: ['openDirectory'],
+            });
+
+            if (!directory) {
+                return;
+            }
+            if (directory.canceled) {
+                return;
+            }
+
+            const FULL_PATH = directory.filePaths[0];
+
+            return FULL_PATH;
+        } catch (e) {
+            log.error(`Caught error in listener - ${e}`);
+        }
+    };
+
     app.whenReady().then(async () => {
         try {
             await session.defaultSession.clearCache();
+
+            // Plugin iframes are same-origin with the app, so a single app-wide
+            // grant is enough — per-plugin scoping happens at the iframe's
+            // `allow="local-fonts"` attribute (see PluginPanel.tsx), which is only
+            // set for plugins that declare "local-fonts" in their manifest.
+            // Clipboard write permission is required for navigator.clipboard.writeText()
+            // call sites throughout the renderer (Console copy history, gcode editor, etc).
+            const ALLOWED_SESSION_PERMISSIONS = [
+                'local-fonts',
+                'clipboard-sanitized-write',
+            ];
+
+            session.defaultSession.setPermissionCheckHandler(
+                (_webContents, permission) =>
+                    ALLOWED_SESSION_PERMISSIONS.includes(permission),
+            );
+            session.defaultSession.setPermissionRequestHandler(
+                (_webContents, permission, callback) => {
+                    callback(ALLOWED_SESSION_PERMISSIONS.includes(permission));
+                },
+            );
 
             windowManager = new WindowManager();
             // Create and show splash before server starts
@@ -193,20 +253,31 @@ const main = () => {
             let url = '';
             let kiosk = false;
 
+            let usePendantView = readUsePendantViewSetting();
+            if (usePendantView && externalRendererUrl) {
+                log.warn(
+                    'Pendant-as-default-UI is not supported under electron:dev; falling back to the normal dev window.',
+                );
+                usePendantView = false;
+            }
+
             if (externalRendererUrl) {
                 url = externalRendererUrl;
                 try {
                     const parsedUrl = new URL(url);
                     hostInformation = {
                         address: parsedUrl.hostname,
-                        port: Number(parsedUrl.port) || (parsedUrl.protocol === 'https:' ? 443 : 80),
+                        port:
+                            Number(parsedUrl.port) ||
+                            (parsedUrl.protocol === 'https:' ? 443 : 80),
                     };
                 } catch (error) {
                     hostInformation = {};
                 }
                 log.info(`Using external renderer URL in development: ${url}`);
             } else if (process.env.NODE_ENV === 'development') {
-                const errorMessage = 'ELECTRON_RENDERER_URL is required in development mode';
+                const errorMessage =
+                    'ELECTRON_RENDERER_URL is required in development mode';
                 log.error(errorMessage);
                 await dialog.showMessageBox({
                     type: 'error',
@@ -220,21 +291,28 @@ const main = () => {
                 try {
                     res = await launchServer();
                 } catch (error) {
-                    const isBindingError = error.errData?.bindingErr ||
-                        /EADDR|address not available|address already in use/i.test(error.message);
+                    const isBindingError =
+                        error.errData?.bindingErr ||
+                        /EADDR|address not available|address already in use/i.test(
+                            error.message,
+                        );
 
                     if (isBindingError) {
-                        log.warn('Remote mode binding failed — remote config has been reset.');
+                        log.warn(
+                            'Remote mode binding failed — remote config has been reset.',
+                        );
                         dialog.showMessageBoxSync(null, {
                             title: 'Remote Mode Configuration Error',
-                            message: 'gSender could not connect to the configured remote address.',
+                            message:
+                                'gSender could not connect to the configured remote address.',
                             detail: 'Remote mode has been disabled and the configuration has been reset. Please restart gSender.',
                         });
                     } else {
                         log.error('Unexpected server startup error:', error);
                         dialog.showMessageBoxSync(null, {
                             title: 'Server Startup Error',
-                            message: 'gSender encountered an unexpected error while starting.',
+                            message:
+                                'gSender encountered an unexpected error while starting.',
                             detail: String(error.message),
                         });
                     }
@@ -246,10 +324,13 @@ const main = () => {
                 kiosk = resolvedKiosk;
 
                 if (res.configRestored) {
-                    log.warn(`Corrupt settings file recovered — backup at ${res.configBackupPath}`);
+                    log.warn(
+                        `Corrupt settings file recovered — backup at ${res.configBackupPath}`,
+                    );
                     dialog.showMessageBoxSync(null, {
                         title: 'Settings File Recovered',
-                        message: 'Your gSender settings file was corrupted and has been reset to defaults.',
+                        message:
+                            'Your gSender settings file was corrupted and has been reset to defaults.',
                         detail: `A backup of the corrupted file was saved to:\n${res.configBackupPath}`,
                     });
                 }
@@ -262,7 +343,7 @@ const main = () => {
                 if (!(address && port)) {
                     log.error(
                         'Unable to start the server at ' +
-                chalk.cyan(`http://${address}:${port}`),
+                            chalk.cyan(`http://${address}:${port}`),
                     );
                     return;
                 }
@@ -280,23 +361,130 @@ const main = () => {
                 minHeight: 768,
                 ...store.get('bounds'),
             };
-            const options = {
-                ...bounds,
-                title: `gSender ${pkg.version}`,
-                kiosk,
-            };
-            const window = await windowManager.openWindow(url, options, splashScreen);
+            if (usePendantView) {
+                const pendantAssetsPath = path.join(__dirname, 'pendant');
+                if (!fs.existsSync(pendantAssetsPath)) {
+                    log.error(
+                        `Pendant view was requested but no pendant assets were found at ${pendantAssetsPath}; falling back to the standard UI.`,
+                    );
+                    dialog.showMessageBoxSync(null, {
+                        type: 'warning',
+                        title: 'Pendant View Unavailable',
+                        message:
+                            'gSender could not find the pendant interface in this build.',
+                        detail: 'Falling back to the standard desktop UI.',
+                    });
+                    usePendantView = false;
+                }
+            }
 
-            window.on("ready-to-show", () => {
-                const savedScaleFactor = Number(store.get("displayScaleFactor", 1.0));
+            let window;
+            if (usePendantView) {
+                // Registered before loadURL below: the pendant SPA (src/pendant/)
+                // invokes "pendant:get-host" as soon as its bootstrap script runs,
+                // which can happen before loadURL's promise resolves. Mirrors the
+                // standalone pendant binary's handlers in src/pendant-main.js.
+                ipcMain.handle('pendant:get-host', () => {
+                    if (!hostInformation.address || !hostInformation.port) {
+                        return undefined;
+                    }
+                    return `${hostInformation.address}:${hostInformation.port}`;
+                });
+
+                ipcMain.handle('pendant:pick-gcode-file', async () => {
+                    const result = await dialog.showOpenDialog(
+                        window ?? undefined,
+                        {
+                            properties: ['openFile'],
+                            filters: [
+                                {
+                                    name: 'G-Code Files',
+                                    extensions: [
+                                        'gcode',
+                                        'gc',
+                                        'nc',
+                                        'tap',
+                                        'cnc',
+                                        'g',
+                                    ],
+                                },
+                                { name: 'All Files', extensions: ['*'] },
+                            ],
+                        },
+                    );
+
+                    if (result.canceled || !result.filePaths.length)
+                        return undefined;
+
+                    const filePath = result.filePaths[0];
+                    const content = await fs.promises.readFile(
+                        filePath,
+                        'utf8',
+                    );
+                    const { size } = await fs.promises.stat(filePath);
+                    return {
+                        path: filePath,
+                        name: path.basename(filePath),
+                        size,
+                        content,
+                    };
+                });
+
+                ipcMain.handle(
+                    'pendant:read-gcode-file',
+                    async (_event, filePath) => {
+                        if (typeof filePath !== 'string' || !filePath)
+                            return undefined;
+                        const content = await fs.promises.readFile(
+                            filePath,
+                            'utf8',
+                        );
+                        const { size } = await fs.promises.stat(filePath);
+                        return {
+                            path: filePath,
+                            name: path.basename(filePath),
+                            size,
+                            content,
+                        };
+                    },
+                );
+
+                kiosk = true;
+                const pendantUrl = `${url}/pendant`;
+                window = createPendantWindow(
+                    false,
+                    path.join(__dirname, 'preload-pendant.js'),
+                );
+                window.once('ready-to-show', () => {
+                    splashScreen.close();
+                    splashScreen.destroy();
+                });
+                await window.loadURL(pendantUrl);
+            } else {
+                const options = {
+                    ...bounds,
+                    title: `gSender ${pkg.version}`,
+                    kiosk,
+                };
+                window = await windowManager.openWindow(
+                    url,
+                    options,
+                    splashScreen,
+                );
+            }
+
+            window.on('ready-to-show', () => {
+                const savedScaleFactor = Number(
+                    store.get('displayScaleFactor', 1.0),
+                );
 
                 window.webContents.setZoomFactor(savedScaleFactor);
             });
 
             // Check argv for file path on Windows/Linux cold start
             if (process.platform !== 'darwin') {
-                const filePath = process.argv.find(arg =>
-                    /\.(gcode|gc|nc|tap|cnc)$/i.test(arg)
+                const filePath = process.argv.find((arg) =>
+                    /\.(gcode|gc|nc|tap|cnc)$/i.test(arg),
                 );
                 if (filePath) {
                     pendingFileToOpen = filePath;
@@ -314,14 +502,16 @@ const main = () => {
             ipcMain.on('change-power-saving', (_msg, enabled) => {
                 if (!enabled) {
                     // Power saver - display sleep higher precedence over app suspension
-                    powerBlockerNum = powerSaveBlocker.start('prevent-display-sleep');
+                    powerBlockerNum = powerSaveBlocker.start(
+                        'prevent-display-sleep',
+                    );
                     powerMonitor.on('lock-screen', () => {
                         powerSaveBlocker.start('prevent-display-sleep');
                     }),
-                    powerMonitor.on('suspend', () => {
-                        powerSaveBlocker.start('prevent-app-suspension');
-                        log.info('Prevented suspension');
-                    })
+                        powerMonitor.on('suspend', () => {
+                            powerSaveBlocker.start('prevent-app-suspension');
+                            log.info('Prevented suspension');
+                        });
                 } else {
                     if (powerSaveBlocker.isStarted(powerBlockerNum)) {
                         powerSaveBlocker.stop(powerBlockerNum);
@@ -347,11 +537,14 @@ const main = () => {
 
                 autoUpdater.on('error', (err) => {
                     window.webContents.send('updated_error', err);
-                    log.error((err));
+                    log.error(err);
                 });
 
                 autoUpdater.on('download-progress', (info) => {
-                    window.webContents.send('update_download_progress', info.percent);
+                    window.webContents.send(
+                        'update_download_progress',
+                        info.percent,
+                    );
                 });
 
                 ipcMain.once('restart_app', async () => {
@@ -381,19 +574,19 @@ const main = () => {
                 if (error.type.includes('GRBL_HAL')) {
                     error.type === 'GRBL_HAL_ERROR'
                         ? grblLog.error(
-                            `GRBL_HAL_ERROR:Error ${error.code} - ${error.description} Line ${error.lineNumber}: "${error.line.trim()}" Origin- ${error.origin.trim()}`,
-                        )
+                              `GRBL_HAL_ERROR:Error ${error.code} - ${error.description} Line ${error.lineNumber}: "${error.line.trim()}" Origin- ${error.origin.trim()}`,
+                          )
                         : grblLog.error(
-                            `GRBL_HAL_ALARM:Alarm ${error.code} - ${error.description}`,
-                        );
+                              `GRBL_HAL_ALARM:Alarm ${error.code} - ${error.description}`,
+                          );
                 } else {
                     error.type === 'GRBL_ERROR'
                         ? grblLog.error(
-                            `GRBL_ERROR:Error ${error.code} - ${error.description} Line ${error.lineNumber}: "${error.line.trim()}" Origin- ${error.origin.trim()}`,
-                        )
+                              `GRBL_ERROR:Error ${error.code} - ${error.description} Line ${error.lineNumber}: "${error.line.trim()}" Origin- ${error.origin.trim()}`,
+                          )
                         : grblLog.error(
-                            `GRBL_ALARM:Alarm ${error.code} - ${error.description}`,
-                        );
+                              `GRBL_ALARM:Alarm ${error.code} - ${error.description}`,
+                          );
                 }
             });
 
@@ -428,15 +621,17 @@ const main = () => {
                         key: '\\Software\\SienciLabs\\gSender',
                     });
 
-                    const isBundledValue = await new Promise((resolve, reject) => {
-                        registry.get('IsBundled', (err, item) => {
-                            if (err) {
-                                reject(err);
-                                return;
-                            }
-                            resolve(item.value);
-                        });
-                    });
+                    const isBundledValue = await new Promise(
+                        (resolve, reject) => {
+                            registry.get('IsBundled', (err, item) => {
+                                if (err) {
+                                    reject(err);
+                                    return;
+                                }
+                                resolve(item.value);
+                            });
+                        },
+                    );
 
                     const isBundled = isBundledValue === '0x1';
 
@@ -448,12 +643,12 @@ const main = () => {
             });
 
             /**
-            * gSender config events - move electron store changes out of renderer process
-            */
+             * gSender config events - move electron store changes out of renderer process
+             */
             ipcMain.on('open-upload-dialog', async () => {
                 try {
-                    let additionalOptions = {};
-                    let gSenderWindow = windowManager.getWindow();
+                    const additionalOptions = {};
+                    const gSenderWindow = windowManager.getWindow();
 
                     if (prevDirectory) {
                         additionalOptions.defaultPath = prevDirectory;
@@ -482,7 +677,8 @@ const main = () => {
                         return [dir, base];
                     };
 
-                    const [filePath, fileName] = getFileInformation(FULL_FILE_PATH);
+                    const [filePath, fileName] =
+                        getFileInformation(FULL_FILE_PATH);
 
                     prevDirectory = filePath; // set previous directory
 
@@ -502,6 +698,41 @@ const main = () => {
                     });
                 } catch (e) {
                     log.error(`Caught error in listener - ${e}`);
+                }
+            });
+
+            ipcMain.on('open-directory-dialog', async () => {
+                try {
+                    const FULL_PATH = await openDirectoryDialog();
+                    window.webContents.send(
+                        'returned-directory-dialog-data',
+                        FULL_PATH,
+                    );
+                } catch (e) {
+                    log.error(`Caught error in open-directory-dialog - ${e}`);
+                }
+            });
+
+            ipcMain.on('open-plugin-import-dialog', async () => {
+                try {
+                    const FULL_PATH = await openDirectoryDialog();
+                    const assetsPath = path.join(FULL_PATH, 'ui', 'assets');
+                    const allFiles = fs.readdirSync(assetsPath);
+                    const indexFile = allFiles.filter(
+                        (file) =>
+                            path.extname(file).toLowerCase() === '.js' &&
+                            file.includes('index'),
+                    )[0];
+
+                    window.webContents.send(
+                        'returned-plugin-directory-data',
+                        FULL_PATH,
+                        path.join(assetsPath, indexFile),
+                    );
+                } catch (e) {
+                    log.error(
+                        `Caught error in open-plugin-import-dialog - ${e}`,
+                    );
                 }
             });
 
@@ -533,10 +764,14 @@ const main = () => {
             ipcMain.on('reconnect-main', (event, options) => {
                 let shouldReconnect = false;
                 try {
-                    if (event && event.sender && event.sender.browserWindowOptions) {
+                    if (
+                        event &&
+                        event.sender &&
+                        event.sender.browserWindowOptions
+                    ) {
                         shouldReconnect =
-              !event.sender.browserWindowOptions.parent &&
-              windowManager.childWindows.length > 0;
+                            !event.sender.browserWindowOptions.parent &&
+                            windowManager.childWindows.length > 0;
                     }
                 } catch (err) {
                     log.error(err);
@@ -559,17 +794,46 @@ const main = () => {
                 });
             });
 
-            ipcMain.on("save-display-scale", (_event, scaleFactor) => {
+            ipcMain.on('save-display-scale', (_event, scaleFactor) => {
                 const value = Number(scaleFactor) || 1.0;
 
-                store.set("displayScaleFactor", value);
+                store.set('displayScaleFactor', value);
                 window.webContents.setZoomFactor(value);
             });
 
             //Handle app restart with remote settings
             ipcMain.on('remoteMode-restart', (event, headlessSettings) => {
-                app.relaunch(); // flags are handled in server/index.js
-                app.exit(0);
+                let didRestart = false;
+                const finishRestart = () => {
+                    if (didRestart) return;
+                    didRestart = true;
+                    app.relaunch(); // flags are handled in server/index.js
+                    app.exit(0);
+                };
+
+                // The pendant view runs in native kiosk/fullscreen mode, which can
+                // block the process from exiting cleanly (macOS in particular) unless
+                // we leave fullscreen first. Schedule the fallback timeout before
+                // touching kiosk/fullscreen state so a native exception there can't
+                // prevent the restart from ever happening.
+                if (
+                    window &&
+                    !window.isDestroyed() &&
+                    (window.isKiosk() || window.isFullScreen())
+                ) {
+                    window.once('leave-full-screen', finishRestart);
+                    setTimeout(finishRestart, 1000);
+                    try {
+                        window.setKiosk(false);
+                        window.setFullScreen(false);
+                    } catch (err) {
+                        log.error(
+                            `Failed to leave kiosk/fullscreen before restart: ${err}`,
+                        );
+                    }
+                } else {
+                    finishRestart();
+                }
             });
         } catch (err) {
             log.error(err);

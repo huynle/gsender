@@ -1,3 +1,11 @@
+import { GRBLHAL, METRIC_UNITS } from 'app/constants';
+import { UNITS_GCODE } from 'app/definitions/general';
+import {
+    PROBE_DIRECTIONS,
+    PROBE_TYPES_T,
+    ProbingOptions,
+} from 'app/features/Probe/definitions';
+import { AXES_T } from 'app/store/definitions';
 import {
     PROBE_TYPE_AUTO,
     PROBE_TYPE_TIP,
@@ -10,16 +18,8 @@ import {
     PROBE_ROUTINE_BOSS_CENTER,
     isCentreFindingRoutine,
 } from './constants';
-import { GRBLHAL, METRIC_UNITS } from '../constants';
+import { getZDownTravel } from './SoftLimits';
 import { convertToMetric, mm2in } from './units';
-import { UNITS_GCODE } from 'app/definitions/general';
-import { AXES_T } from 'app/features/Axes/definitions';
-import {
-    PROBE_DIRECTIONS,
-    ProbingOptions,
-    PROBE_TYPES_T,
-} from 'app/features/Probe/definitions';
-import { getZDownTravel } from 'app/lib/SoftLimits.js';
 
 export const BL = 0;
 export const TL = 1;
@@ -174,7 +174,7 @@ const updateOptionsForDirection = (
     options.xThickness = toolCompensatedXY * xProbeDir;
 
     //Via Chris - xyMovement should be xyThickness + retraction distance + tool Radius
-    let xyMovement =
+    const xyMovement =
         (is3DFamily(plateType) ? options.xyRetract3D : xyThickness) +
         options.retract +
         toolRadius;
@@ -206,8 +206,8 @@ export const getSingleAxisStandardRoutine = (
 ): Array<string> => {
     axis = axis.toUpperCase();
     const p = 'P0';
-    let axisRetract = `${axis}_RETRACT_DISTANCE`;
-    let finalRetract = useFinalZ
+    const axisRetract = `${axis}_RETRACT_DISTANCE`;
+    const finalRetract = useFinalZ
         ? `Z_RETRACT_FINAL`
         : `${axis}_RETRACT_DISTANCE`;
     const code = [
@@ -239,7 +239,7 @@ export const get3AxisStandardRoutine = (
 
     // Extra movement to compensate for variation in bit placement informed by starting circle diameter
     // Adjustment based on Chris' suggestions
-    let initialPositionAdjustment =
+    const initialPositionAdjustment =
         units === METRIC_UNITS ? 6 : mm2in(6).toFixed(3);
 
     const finalZeroMove = (coords: string): string =>
@@ -292,8 +292,8 @@ const determineAutoPlateOffsetValues = (
     direction: PROBE_DIRECTIONS,
     _diameter: PROBE_TYPES_T | number = null,
 ): [number, number] => {
-    let xOff = 22.5;
-    let yOff = 22.5;
+    const xOff = 22.5;
+    const yOff = 22.5;
 
     // we already compensate for the tool in another place, so we don't need this
     // if (diameter && !(diameter in PROBE_TYPES)) {

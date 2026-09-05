@@ -1,10 +1,9 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { CommandKeys } from 'app/lib/definitions/shortcuts';
 import store from 'app/store';
-import { CommandKeys } from 'app/lib/definitions/shortcuts';
-import { Notification } from 'app/workspace/definitions';
+import type { Notification } from 'app/workspace/definitions';
 
-import { PreferencesState } from '../../definitions';
+import type { NetworkAddress, PreferencesState } from '../../definitions';
 
 const initialState: PreferencesState = {
     shortcuts: {
@@ -49,7 +48,7 @@ const preferencesSlice = createSlice({
         unholdShortcuts(state) {
             state.shortcuts.shouldHold = false;
         },
-        setIpList(state, action: PayloadAction<string[]>) {
+        setIpList(state, action: PayloadAction<NetworkAddress[]>) {
             state.ipList = action.payload;
         },
         addNotification(state, action: PayloadAction<Notification>) {

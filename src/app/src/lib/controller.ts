@@ -21,7 +21,7 @@
  *
  */
 import isElectron from 'is-electron';
-import io, { Socket } from 'socket.io-client';
+import io, { type Socket } from 'socket.io-client';
 
 export interface ControllerListeners {
     // Socket.IO Events
@@ -101,6 +101,8 @@ export interface ControllerListeners {
     'flash:progress': Array<Function>;
     'spindle:add': Array<Function>;
     atci: Array<Function>;
+    'grblHal:autoconfig': Array<Function>;
+    'grblHal:info': Array<Function>;
     'ymodem:start': Array<Function>;
     'ymodem:complete': Array<Function>;
     'ymodem:progress': Array<Function>;
@@ -116,6 +118,12 @@ export interface ControllerListeners {
     'sdcard:files': Array<Function>;
     'sdcard:clear': Array<Function>;
     'sdcard:json': Array<Function>;
+    // Dev-only: emitted by the server when a plugin's files are updated.
+    'plugins:changed': Array<Function>;
+    // A plugin-registered parser matched a firmware response.
+    'plugin:parser:match': Array<Function>;
+    // A plugin's parser was rejected, rate limited, or quarantined.
+    'plugin:parser:error': Array<Function>;
 }
 
 const ensureArray = (...args: Array<any>) => {
@@ -224,11 +232,20 @@ class Controller {
         'sdcard:clear': [],
         'sdcard:json': [],
         atci: [],
+        'grblHal:autoconfig': [],
+        'grblHal:info': [],
         'ymodem:start': [],
         'ymodem:complete': [],
         'ymodem:progress': [],
         'ymodem:error': [],
         'job:stop': [],
+        'plugins:changed': [],
+        // NOTE: these must appear in this object literal, not just in the
+        // interface — the socket re-dispatch loop below iterates
+        // Object.keys(this.listeners), so a key present only in the type would
+        // silently never be subscribed to.
+        'plugin:parser:match': [],
+        'plugin:parser:error': [],
     };
 
     context = {
@@ -360,6 +377,7 @@ class Controller {
                 loadedControllers = [],
                 baudrates = [],
                 ports = [],
+                activeConnection = null,
             } = { ...data };
 
             this.loadedControllers = ensureArray(loadedControllers);
@@ -378,6 +396,14 @@ class Controller {
             // don't want to update store if it is electron
             if (!isElectron()) {
                 this.socket && this.socket.emit('newConnection');
+
+                // A remote/browser client only ever talks to one controller at a
+                // time. If the desktop is already connected, join that session
+                // automatically instead of making the user click Connect — this
+                // takes priority over any locally-saved autoReconnect port.
+                if (activeConnection && activeConnection.port) {
+                    this.addClient(activeConnection.port);
+                }
             }
         });
     }
@@ -558,13 +584,101 @@ class Controller {
     //   controller.command('watchdir:load', '/path/to/file', callback)
     command(cmd: string, ...args: Array<any>): void {
         const { port } = this;
-        if (!port) {
+
+        // NOTE: the trailing callback is deliberately left in `args` — server-side
+        // handlers (e.g. 'gcode:load') destructure positionally and already expect
+        // it there. We only peek at it so a caller isn't left hanging forever when
+        // there is nothing to send the command to.
+        const callback =
+            typeof args[args.length - 1] === 'function'
+                ? (args[args.length - 1] as (err: Error | null) => void)
+                : null;
+
+        if (!port || !this.socket) {
+            callback?.(new Error('No serial port is open'));
             return;
         }
 
         const socketArgs = [port, cmd, ...args];
-        this.socket &&
-            this.socket.emit.apply(this.socket, ['command', ...socketArgs]);
+        this.socket.emit.apply(this.socket, ['command', ...socketArgs]);
+    }
+
+    // --- Plugin parsers -------------------------------------------------------
+    // Matching happens server-side against every raw firmware line, so only the
+    // matches cross the socket and the console keeps its curated feed.
+
+    /**
+     * Sends a command on behalf of a plugin.
+     *
+     * Separate from `command()` above because the plugin path needs a promise,
+     * and `command()` settles by passing a callback through the controller's
+     * args — where positional handlers mistake it for `context`. Here the ack
+     * is its own socket.io parameter and never joins the args.
+     *
+     * Resolves on delivery, not completion.
+     */
+    pluginCommand(
+        cmd: string,
+        args: Array<unknown> = [],
+    ): Promise<{ ok: boolean }> {
+        return this.pluginRequest('plugin:command', [cmd, args]);
+    }
+
+    /**
+     * Registers runtime (iframe-scoped) parsers. Manifest-declared parsers do
+     * not come through here — the server reads those from the plugin registry.
+     */
+    registerPluginParsers(
+        ownerId: string,
+        pluginId: string,
+        specs: Array<unknown>,
+    ): Promise<{ registered: string[]; errors: Array<unknown> }> {
+        return this.pluginRequest('plugin:parser:register', [
+            ownerId,
+            pluginId,
+            specs,
+        ]);
+    }
+
+    unregisterPluginParsers(
+        ownerId: string,
+        parserId?: string,
+    ): Promise<{ ok: boolean }> {
+        return this.pluginRequest('plugin:parser:unregister', [
+            ownerId,
+            parserId,
+        ]);
+    }
+
+    pluginQuery(cmd: string, opts: object = {}): Promise<unknown> {
+        return this.pluginRequest('plugin:query', [cmd, opts]);
+    }
+
+    /**
+     * Shared socket round-trip for the plugin parser events. All three server
+     * handlers ack on every path, so unlike `command` these always settle.
+     */
+    private pluginRequest<T>(event: string, args: Array<unknown>): Promise<T> {
+        const { port } = this;
+        if (!port || !this.socket) {
+            return Promise.reject(new Error('No serial port is open'));
+        }
+
+        return new Promise<T>((resolve, reject) => {
+            this.socket.emit(event, port, ...args, (response: any) => {
+                if (!response || response.ok === false) {
+                    const error = new Error(
+                        response?.error || `${event} failed`,
+                    ) as Error & { code?: string };
+                    error.code = response?.code;
+                    reject(error);
+                    return;
+                }
+                resolve(
+                    response.result !== undefined ? response.result : response,
+                );
+            });
+        });
     }
 
     // Writes data to the serial port.

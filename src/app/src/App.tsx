@@ -1,18 +1,32 @@
-import { useEffect } from 'react';
+/** biome-ignore-all lint/suspicious/noExplicitAny: <> */
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import controller from 'app/lib/controller';
+import { FocusTrappingProvider } from 'app/lib/focus-trapping';
+import * as user from 'app/lib/user';
+import store from 'app/store';
+import { type RootState, store as reduxStore } from 'app/store/redux';
+import rootSaga, { sagaMiddleware } from 'app/store/redux/sagas';
+import isElectron from 'is-electron';
+import { posthog } from 'posthog-js';
+import { type ReactNode, useEffect } from 'react';
 import { Provider as ReduxProvider } from 'react-redux';
 import { HashRouter } from 'react-router';
-
-import { store as reduxStore } from 'app/store/redux';
-import rootSaga from 'app/store/redux/sagas';
-import { sagaMiddleware } from 'app/store/redux/sagas';
-import store from 'app/store';
-import * as user from 'app/lib/user';
-import controller from 'app/lib/controller';
 import { Toaster } from './components/shadcn/Sonner';
-import { ReactRoutes } from './react-routes';
+import { AccessoryConnectivityToastHost } from './features/AccessoryConnectivity/AccessoryConnectivityToastHost';
 import { AccessibilitySettingsHandler } from './features/Helper/AccessibilitySettingsHandler';
-import { posthog } from 'posthog-js';
-import isElectron from 'is-electron';
+import { installPluginBridgeListener } from './features/Plugins/utils/pluginBridge';
+import { ReactRoutes } from './react-routes';
+
+function FocusTrappingBridge({ children }: { children: ReactNode }) {
+    const focusTrapping = useTypedSelector(
+        (state: RootState) => state.preferences.accessibility.focusTrapping,
+    );
+    return (
+        <FocusTrappingProvider value={focusTrapping}>
+            {children}
+        </FocusTrappingProvider>
+    );
+}
 
 function App() {
     useEffect(() => {
@@ -33,6 +47,8 @@ function App() {
 
         sagaMiddleware.run(rootSaga);
 
+        const removePluginBridge = installPluginBridgeListener();
+
         const shouldSendUsageData = store.get(
             'workspace.collectUsageDataStatus',
             'pending',
@@ -47,29 +63,29 @@ function App() {
 
         if (isElectron()) {
             console.log('Getting windows registry');
-            window.ipcRenderer
+            (window as any).ipcRenderer
                 .invoke('get-windows-registry')
                 .then((value: boolean) => {
                     posthog.register({ isBundled: value });
                 });
         }
+
+        return () => {
+            removePluginBridge();
+        };
     }, []);
 
     return (
-        <>
-            <ReduxProvider store={reduxStore}>
+        <ReduxProvider store={reduxStore}>
+            <FocusTrappingBridge>
                 <AccessibilitySettingsHandler />
-                <Toaster
-                    richColors
-                    closeButton
-                    theme="light"
-                    visibleToasts={5}
-                />
+                <Toaster closeButton visibleToasts={5} />
+                <AccessoryConnectivityToastHost />
                 <HashRouter>
                     <ReactRoutes />
                 </HashRouter>
-            </ReduxProvider>
-        </>
+            </FocusTrappingBridge>
+        </ReduxProvider>
     );
 }
 

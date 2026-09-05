@@ -1,4 +1,4 @@
-import { ButtonProps } from 'app/components/Button';
+import type { ButtonProps } from 'app/components/Button';
 import { Button } from '../shadcn/Button';
 
 export interface IconButtonProps extends ButtonProps {

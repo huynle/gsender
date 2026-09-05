@@ -21,71 +21,76 @@
  *
  */
 
-import { Component } from 'react';
-import { connect } from 'react-redux';
-import _ from 'lodash';
-import includes from 'lodash/includes';
-import get from 'lodash/get';
-import debounce from 'lodash/debounce';
-import pubsub from 'pubsub-js';
-import PropTypes from 'prop-types';
-
+import { Tooltip } from 'app/components/Tooltip';
+import { Widget } from 'app/components/Widget';
+import PluginVisualizerOverlayHost from 'app/features/Plugins/components/PluginVisualizerOverlayHost';
+import { WorkspaceSelector } from 'app/features/WorkspaceSelector/index.tsx';
 import combokeys from 'app/lib/combokeys';
-import store from 'app/store';
-import { store as reduxStore } from 'app/store/redux';
 import controller from 'app/lib/controller';
+import type { CommandKeys } from 'app/lib/definitions/shortcuts';
+import { uploadGcodeFileToServer } from 'app/lib/fileupload';
+import { getVisualizerTheme } from 'app/lib/getVisualizerTheme';
 import log from 'app/lib/log';
 import * as WebGL from 'app/lib/three/WebGL';
-import {
-    Toaster,
-    TOASTER_LONG,
-    TOASTER_WARNING,
-} from 'app/lib/toaster/ToasterLib';
 import { toast } from 'app/lib/toaster';
+import store from 'app/store';
+import { store as reduxStore } from 'app/store/redux';
 import {
     updateFileInfo,
     updateFileProcessing,
 } from 'app/store/redux/slices/fileInfo.slice';
-import { uploadGcodeFileToServer } from 'app/lib/fileupload';
-
-import WidgetConfig from '../WidgetConfig/WidgetConfig';
-import PrimaryVisualizer from './PrimaryVisualizer';
+import cx from 'classnames';
+import _ from 'lodash';
+import debounce from 'lodash/debounce';
+import get from 'lodash/get';
+import includes from 'lodash/includes';
+import { FrownIcon } from 'lucide-react';
+import posthog from 'posthog-js';
+import PropTypes from 'prop-types';
+import pubsub from 'pubsub-js';
+import { Component } from 'react';
+import { FaFeatherAlt } from 'react-icons/fa';
+import { connect } from 'react-redux';
 import {
-    // Units
-    METRIC_UNITS,
+    GENERAL_CATEGORY,
     // Grbl
     GRBL,
-    GRBLHAL,
-    GRBL_ACTIVE_STATE_RUN,
-    // Marlin
-    MARLIN,
-    // Smoothie
-    SMOOTHIE,
-    // TinyG
-    TINYG,
-    // Workflow
-    WORKFLOW_STATE_RUNNING,
-    WORKFLOW_STATE_PAUSED,
-    WORKFLOW_STATE_IDLE,
-    RENDER_RENDERING,
-    RENDER_LOADING,
+    GRBL_ACTIVE_STATE_CHECK,
     GRBL_ACTIVE_STATE_HOLD,
     GRBL_ACTIVE_STATE_IDLE,
+    GRBL_ACTIVE_STATE_RUN,
+    GRBLHAL,
+    LIGHTWEIGHT_OPTIONS,
+    // Marlin
+    MARLIN,
+    // Units
+    METRIC_UNITS,
+    OVERRIDES_CATEGORY,
+    RENDER_LOADING,
+    RENDER_RENDERING,
+    // Smoothie
+    SMOOTHIE,
+    SURFACING_VISUALIZER_CONTAINER_ID,
+    // TinyG
+    TINYG,
+    VISUALIZER_CATEGORY,
     VISUALIZER_PRIMARY,
     VISUALIZER_SECONDARY,
-    GRBL_ACTIVE_STATE_CHECK,
-    GENERAL_CATEGORY,
-    VISUALIZER_CATEGORY,
-    OVERRIDES_CATEGORY,
-    LIGHTWEIGHT_OPTIONS,
+    WORKFLOW_STATE_IDLE,
+    WORKFLOW_STATE_PAUSED,
+    // Workflow
+    WORKFLOW_STATE_RUNNING,
 } from '../../constants';
-import { CAMERA_MODE_PAN, CAMERA_MODE_ROTATE } from './constants';
-import { getVisualizerTheme } from 'app/lib/getVisualizerTheme';
-import SecondaryVisualizer from './SecondaryVisualizer';
 import useKeybinding from '../../lib/useKeybinding';
-import { CommandKeys } from 'app/lib/definitions/shortcuts';
-import { Actions, State } from './definitions';
-import posthog from 'posthog-js';
+import WidgetConfig from '../WidgetConfig/WidgetConfig';
+import { CAMERA_MODE_PAN, CAMERA_MODE_ROTATE } from './constants';
+import type { Actions, State } from './definitions';
+import GcodeEditorOverlay from './GcodeEditorOverlay';
+import GcodeViewer from './GcodeViewer';
+import Loading from './Loading';
+import { VisualizerPlaceholder } from './Placeholder';
+import Rendering from './Rendering';
+import SoftLimitsWarningArea from './SoftLimitsWarningArea';
 
 interface Views {
     type: 'isometric' | 'top' | 'front' | 'right' | 'left' | 'default';
@@ -94,6 +99,46 @@ interface Views {
 const debouncedThemeChange = debounce(() => {
     pubsub.publish('visualizer:redraw');
 }, 500);
+
+// Keep in sync with the view cube's own geometry in @sienci/gviewer's
+// src/viewer/viewcube.css (landscape vs. `@media (orientation: portrait)`).
+// `left` stays 60px in both orientations there — only `bottom`/size change in
+// portrait — so left/bottom offsets are tracked separately here.
+const VIEWCUBE_LEFT_PX = 60;
+const VIEWCUBE_BOTTOM_PX = 60;
+const VIEWCUBE_SIZE_PX = 84;
+const VIEWCUBE_LEFT_PX_PORTRAIT = 60;
+const VIEWCUBE_BOTTOM_PX_PORTRAIT = 110;
+const VIEWCUBE_SIZE_PX_PORTRAIT = 64;
+const VIEWCUBE_CONTROL_GAP_PX = 12;
+// "Move To Here" toggle sits stacked directly above the lightweight toggle.
+const FLOATING_BUTTON_SIZE_PX = 44; // h-11 / w-11
+
+function getViewCubeControlPositions(isPortrait: boolean) {
+    const viewCubeLeft = isPortrait
+        ? VIEWCUBE_LEFT_PX_PORTRAIT
+        : VIEWCUBE_LEFT_PX;
+    const viewCubeBottom = isPortrait
+        ? VIEWCUBE_BOTTOM_PX_PORTRAIT
+        : VIEWCUBE_BOTTOM_PX;
+    const viewCubeSize = isPortrait
+        ? VIEWCUBE_SIZE_PX_PORTRAIT
+        : VIEWCUBE_SIZE_PX;
+
+    const lightweightTogglePosition = {
+        left: viewCubeLeft + viewCubeSize / 2,
+        bottom: viewCubeBottom + viewCubeSize + VIEWCUBE_CONTROL_GAP_PX,
+    };
+    const moveToHereTogglePosition = {
+        left: lightweightTogglePosition.left,
+        bottom:
+            lightweightTogglePosition.bottom +
+            FLOATING_BUTTON_SIZE_PX +
+            VIEWCUBE_CONTROL_GAP_PX,
+    };
+
+    return { lightweightTogglePosition, moveToHereTogglePosition };
+}
 
 class Visualizer extends Component {
     static propTypes = {
@@ -273,7 +318,7 @@ class Visualizer extends Component {
                 };
 
                 if (!capable.view3D) {
-                    let interval = setInterval(() => {
+                    const interval = setInterval(() => {
                         if (this.actions.checkVisualizerRef()) {
                             clearInterval(interval);
 
@@ -559,22 +604,40 @@ class Visualizer extends Component {
                 }
             },
             toTopView: () => {
-                this.setState({ cameraPosition: 'Top' });
+                this.setState((prev) => ({
+                    cameraPosition: 'Top',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
             to3DView: () => {
-                this.setState({ cameraPosition: '3D' });
+                this.setState((prev) => ({
+                    cameraPosition: '3D',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
             toFrontView: () => {
-                this.setState({ cameraPosition: 'Front' });
+                this.setState((prev) => ({
+                    cameraPosition: 'Front',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
             toLeftSideView: () => {
-                this.setState({ cameraPosition: 'Left' });
+                this.setState((prev) => ({
+                    cameraPosition: 'Left',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
             toRightSideView: () => {
-                this.setState({ cameraPosition: 'Right' });
+                this.setState((prev) => ({
+                    cameraPosition: 'Right',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
             toFreeView: () => {
-                this.setState({ cameraPosition: 'Free' });
+                this.setState((prev) => ({
+                    cameraPosition: 'Free',
+                    cameraPositionNonce: prev.cameraPositionNonce + 1,
+                }));
             },
         },
         handleLiteModeToggle: () => {
@@ -702,8 +765,22 @@ class Visualizer extends Component {
 
     workflowControl = null;
 
+    orientationMediaQueryList: MediaQueryList | null = null;
+
+    handleOrientationChange = (event: MediaQueryListEvent) => {
+        this.setState({ isPortrait: event.matches });
+    };
+
     componentDidMount() {
         this.subscribe();
+
+        this.orientationMediaQueryList = window.matchMedia(
+            '(orientation: portrait)',
+        );
+        this.orientationMediaQueryList.addEventListener(
+            'change',
+            this.handleOrientationChange,
+        );
 
         /*store.on('change', () => {
             const { theme } = this.state;
@@ -739,6 +816,11 @@ class Visualizer extends Component {
         this.unsubscribe();
         this.removeShuttleControlEvents();
         this.unsubscribe();
+
+        this.orientationMediaQueryList?.removeEventListener(
+            'change',
+            this.handleOrientationChange,
+        );
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -800,6 +882,9 @@ class Visualizer extends Component {
             port: controller.port,
             units: store.get('workspace.units', METRIC_UNITS),
             theme: this.config.get('theme'),
+            isPortrait:
+                typeof window !== 'undefined' &&
+                window.matchMedia('(orientation: portrait)').matches,
             showSoftLimitsWarning: this.config.get(
                 'showSoftLimitsWarning',
                 false,
@@ -906,6 +991,8 @@ class Visualizer extends Component {
             },
             cameraMode: this.config.get('cameraMode', CAMERA_MODE_PAN),
             cameraPosition: '3D', // 'Top', '3D', 'Front', 'Left', 'Right'
+            cameraPositionNonce: 0, // tracks how many repeat camera view requests have been made
+            // so that it can snap camera even if it's already in that view
             isAgitated: false, // Defaults to false
             currentTheme: getVisualizerTheme(),
             currentTab: 0,
@@ -1505,7 +1592,7 @@ class Visualizer extends Component {
                         limits: {
                             visible: this.config.get(
                                 'objects.limits.visible',
-                                true,
+                                false,
                             ),
                         },
                         coordinateSystem: {
@@ -1568,7 +1655,6 @@ class Visualizer extends Component {
         const {
             renderState,
             isSecondary,
-            gcode,
             activeVisualizer,
             activeState,
             alarmCode,
@@ -1592,6 +1678,9 @@ class Visualizer extends Component {
             ...this.actions,
         };
 
+        const { lightweightTogglePosition, moveToHereTogglePosition } =
+            getViewCubeControlPositions(state.isPortrait);
+
         const showRendering = renderState === RENDER_RENDERING;
         const showLoading = renderState === RENDER_LOADING;
         // Handle visualizer render
@@ -1607,34 +1696,127 @@ class Visualizer extends Component {
             capable.view3D &&
             ((isSecondary && activeVisualizer === VISUALIZER_SECONDARY) ||
                 (!isSecondary && activeVisualizer === VISUALIZER_PRIMARY));
+        const liteModeActionLabel = state.liteMode
+            ? 'Disable lightweight mode'
+            : 'Enable lightweight mode';
 
-        const MainComponent = isSecondary ? (
-            <SecondaryVisualizer
-                state={state}
-                actions={actions}
-                showLoading={showLoading}
-                showRendering={showRendering}
-                showVisualizer={showVisualizer}
-                visualizerRef={(ref) => {
-                    this.visualizer = ref?.visualizer;
-                }}
-                cameraPosition="3D"
-            />
-        ) : (
-            <PrimaryVisualizer
-                state={state}
-                actions={actions}
-                showLoading={showLoading}
-                showRendering={showRendering}
-                showVisualizer={showVisualizer}
-                visualizerRef={(ref) => {
-                    this.visualizer = ref?.visualizer;
-                }}
-                timeline={this.props.timeline}
-            />
+        const setVisualizerRef = (ref) => {
+            this.visualizer = ref;
+        };
+
+        const webGLAvailable = WebGL.isWebGLAvailable();
+
+        if (isSecondary) {
+            return (
+                <>
+                    <div
+                        className={cx(
+                            'z-10 absolute w-[40vw] h-[25vh] top-1/2 right-1/4 translate-x-1/4 -translate-y-1/2',
+                            { hidden: !showLoading && !showRendering },
+                        )}
+                    >
+                        {showLoading && <Loading />}
+                        {showRendering && <Rendering />}
+                    </div>
+
+                    {webGLAvailable && (
+                        <GcodeViewer
+                            show={showVisualizer}
+                            cameraPosition={state.cameraPosition}
+                            cameraPositionNonce={state.cameraPositionNonce}
+                            ref={setVisualizerRef}
+                            state={state}
+                            actions={actions}
+                            containerID={SURFACING_VISUALIZER_CONTAINER_ID}
+                            isSecondary={true}
+                        />
+                    )}
+                </>
+            );
+        }
+
+        const containerID = 'visualizer_container';
+
+        return (
+            <Widget className="w-full p-1 max-xl:p-0.5">
+                <Widget.Content
+                    id={containerID}
+                    className="w-full bg-no-repeat bg-center"
+                >
+                    {showLoading && (
+                        <div className=" z-10 relative  w-[40vw] h-[25vh] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                            <Loading />
+                        </div>
+                    )}
+
+                    {showRendering && <Rendering />}
+
+                    <div className="h-full w-full absolute top-0 left-0">
+                        <SoftLimitsWarningArea />
+                        {webGLAvailable ? (
+                            <GcodeViewer
+                                show={showVisualizer}
+                                cameraPosition={state.cameraPosition}
+                                cameraPositionNonce={state.cameraPositionNonce}
+                                ref={setVisualizerRef}
+                                state={state}
+                                actions={actions}
+                                containerID={containerID}
+                                isSecondary={false}
+                            />
+                        ) : (
+                            <div>
+                                <FrownIcon size={4} />
+                                <span style={{ fontSize: '16px' }}>
+                                    {
+                                        "It looks like your device doesn't support WebGL"
+                                    }
+                                </span>
+                            </div>
+                        )}
+
+                        {!showVisualizer && webGLAvailable && (
+                            <VisualizerPlaceholder />
+                        )}
+
+                        <PluginVisualizerOverlayHost
+                            baseBottomPx={lightweightTogglePosition.bottom}
+                            leftPx={lightweightTogglePosition.left}
+                        />
+
+                        <Tooltip content={liteModeActionLabel} side="top">
+                            <button
+                                type="button"
+                                style={lightweightTogglePosition}
+                                className={cx(
+                                    'absolute z-[8998] inline-flex h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border bg-dark-darker/70 shadow-[0_10px_30px_rgba(0,_0,_0,_0.25)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-dark-darker active:scale-[0.98] active:bg-dark-darker/85 mb-5',
+                                    {
+                                        'border-[rgba(96,_165,_250,_0.95)] text-[rgba(96,_165,_250,_0.95)] shadow-[0_0_0_1px_rgba(96,_165,_250,_0.35),0_10px_30px_rgba(0,_0,_0,_0.35)] hover:border-[rgba(96,_165,_250,_0.95)] hover:text-[rgba(96,_165,_250,_0.95)] hover:shadow-[0_0_0_1px_rgba(96,_165,_250,_0.45),0_12px_32px_rgba(0,_0,_0,_0.4)]':
+                                            state.liteMode,
+                                        'border-gray-400/40 text-gray-300 hover:border-gray-200/70 hover:text-gray-100 hover:shadow-[0_12px_32px_rgba(0,_0,_0,_0.35)]':
+                                            !state.liteMode,
+                                    },
+                                )}
+                                aria-label={liteModeActionLabel}
+                                aria-pressed={state.liteMode}
+                                onClick={() => actions.handleLiteModeToggle()}
+                            >
+                                <FaFeatherAlt
+                                    aria-hidden="true"
+                                    className="pointer-events-none h-5 w-5 shrink-0"
+                                />
+                            </button>
+                        </Tooltip>
+
+                        <WorkspaceSelector />
+
+                        {this.props.timeline}
+
+                        <GcodeEditorOverlay />
+                    </div>
+                </Widget.Content>
+            </Widget>
         );
-
-        return MainComponent;
     }
 }
 

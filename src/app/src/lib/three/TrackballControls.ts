@@ -589,7 +589,8 @@ class TrackballControls extends THREE.EventDispatcher {
                 this._movePrev.copy(this._moveCurr);
                 break;
 
-            default: // 2 or more
+            default: {
+                // 2 or more
                 this._state = this.STATE.TOUCH_ZOOM_PAN;
                 const dx = event.touches[0].pageX - event.touches[1].pageX;
                 const dy = event.touches[0].pageY - event.touches[1].pageY;
@@ -601,6 +602,7 @@ class TrackballControls extends THREE.EventDispatcher {
                 this._panStart.copy(this.getMouseOnScreen(x, y));
                 this._panEnd.copy(this._panStart);
                 break;
+            }
         }
 
         this.dispatchEvent({ type: 'start' });
@@ -623,7 +625,8 @@ class TrackballControls extends THREE.EventDispatcher {
                 );
                 break;
 
-            default: // 2 or more
+            default: {
+                // 2 or more
                 const dx = event.touches[0].pageX - event.touches[1].pageX;
                 const dy = event.touches[0].pageY - event.touches[1].pageY;
                 this._touchZoomDistanceEnd = Math.sqrt(dx * dx + dy * dy);
@@ -632,6 +635,7 @@ class TrackballControls extends THREE.EventDispatcher {
                 const y = (event.touches[0].pageY + event.touches[1].pageY) / 2;
                 this._panEnd.copy(this.getMouseOnScreen(x, y));
                 break;
+            }
         }
     };
 

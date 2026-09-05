@@ -20,90 +20,118 @@
  * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
  *
  */
-import _get from 'lodash/get';
-import _throttle from 'lodash/throttle';
-import pubsub from 'pubsub-js';
-import isElectron from 'is-electron';
 
+import api from 'app/api';
+import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib';
+import {
+    ALARM,
+    ALARM_ERROR_TYPES,
+    ERROR,
+    FILE_TYPE,
+    GRBL,
+    GRBL_ACTIVE_STATE_CHECK,
+    GRBL_ACTIVE_STATE_HOLD,
+    GRBL_ACTIVE_STATE_IDLE,
+    GRBL_ACTIVE_STATE_RUN,
+    JOB_STATUS,
+    JOB_TYPES,
+    LIGHTWEIGHT_OPTIONS,
+    RENDER_LOADING,
+    RENDER_NO_FILE,
+    RENDER_RENDERED,
+    VISUALIZER_PRIMARY,
+    VISUALIZER_SECONDARY,
+    WORKSPACE_MODE,
+} from 'app/constants';
+import type { AlarmsErrors } from 'app/definitions/alarms_errors';
+import type {
+    EEPROMDescriptions,
+    FIRMWARE_TYPES_T,
+    MachineProfile,
+} from 'app/definitions/firmware';
+import type {
+    BasicObject,
+    GRBL_ACTIVE_STATES_T,
+} from 'app/definitions/general';
+import {
+    ACCESSORY_AUTOCONFIG_KEYS,
+    type AccessoryAutoconfigKey,
+    isAccessoryConnected,
+} from 'app/features/AccessoryConnectivity/accessoryAutoconfigKeys';
+import { showAccessoryConnectivityToast } from 'app/features/AccessoryConnectivity/showAccessoryConnectivityToast';
+import { KeepoutToggle } from 'app/features/ATC/components/KeepOut/KeepOutToggle.tsx';
+import { updateToolchangeContext } from 'app/features/Helper/Wizard.tsx';
+import type { Spindle } from 'app/features/Spindle/definitions';
+import type {
+    Job,
+    MaintenanceTask,
+} from 'app/features/Stats/utils/StatContext';
+import { connectToLastDevice } from 'app/lib/connection';
+import controller from 'app/lib/controller';
+import type { TOOL } from 'app/lib/definitions/gcode_virtualization';
+import type {
+    FeederStatus,
+    SenderStatus,
+} from 'app/lib/definitions/sender_feeder';
+import { getVisualizerTheme } from 'app/lib/getVisualizerTheme';
+import { isLaserMode } from 'app/lib/laserMode';
+import { updateWorkspaceMode } from 'app/lib/rotary';
+import { toast } from 'app/lib/toaster';
+import { determineFixedSensorInstructions } from 'app/lib/toolChangeUtils';
 import store from 'app/store';
 import { store as reduxStore } from 'app/store/redux';
-import controller from 'app/lib/controller';
+import type { WizardInstructions } from 'app/wizards/definitions';
 import manualToolChange from 'app/wizards/manualToolchange';
 import semiautoToolChange from 'app/wizards/semiautoToolchange';
-import { determineFixedSensorInstructions } from 'app/lib/toolChangeUtils';
-import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib';
-// TODO: add worker types
-// @ts-ignore
-import VisualizeWorker from 'app/workers/Visualize.worker';
 import {
     setActiveVisualizeJobId,
     shouldVisualize,
     visualizeResponse,
 } from 'app/workers/Visualize.response';
-import { isLaserMode } from 'app/lib/laserMode';
-import { getVisualizerTheme } from 'app/lib/getVisualizerTheme';
-import {
-    RENDER_LOADING,
-    RENDER_RENDERED,
-    VISUALIZER_SECONDARY,
-    GRBL_ACTIVE_STATE_RUN,
-    GRBL_ACTIVE_STATE_IDLE,
-    GRBL_ACTIVE_STATE_HOLD,
-    FILE_TYPE,
-    WORKSPACE_MODE,
-    RENDER_NO_FILE,
-    ALARM_ERROR_TYPES,
-    ALARM,
-    ERROR,
-    JOB_TYPES,
-    JOB_STATUS,
-    GRBL,
-    LIGHTWEIGHT_OPTIONS,
-    GRBL_ACTIVE_STATE_CHECK,
-} from 'app/constants';
-import {
-    closeConnection,
-    openConnection,
-    scanNetwork,
-    setConnectionState,
-} from '../slices/connection.slice';
-import { listPorts } from '../slices/connection.slice';
-import {
-    resetHoming,
-    updateControllerSettings,
-    updateControllerState,
-    updateFeederStatus,
-    updateWorkflowState,
-    addSpindle,
-    clearSpindles,
-    updateAlarmDescriptions,
-    updateSettingsDescriptions,
-    updateHomingFlag,
-    updateHasHomed,
-    updateSenderStatus,
-    updateControllerType,
-    addSDCardFileToList,
-} from '../slices/controller.slice';
-import {
+// TODO: add worker types
+// @ts-expect-error
+import type VisualizeWorker from 'app/workers/Visualize.worker';
+import type { WORKSPACE_MODE_T } from 'app/workspace/definitions';
+import isElectron from 'is-electron';
+import _get from 'lodash/get';
+import get from 'lodash/get';
+import _throttle from 'lodash/throttle';
+import pubsub from 'pubsub-js';
+import type {
+    AlarmsData,
+    ControllerSettings,
+    ControllerStateState,
     FILE_TYPE_T,
+    NetworkAddress,
     PortInfo,
     SDCardFile,
     SerialPortOptions,
     WORKFLOW_STATES_T,
 } from '../../definitions';
-import { ControllerSettings } from '../../definitions';
-import { FeederStatus } from 'app/lib/definitions/sender_feeder';
 import {
-    EEPROMDescriptions,
-    FIRMWARE_TYPES_T,
-    MachineProfile,
-} from 'app/definitions/firmware';
-import { BasicObject, GRBL_ACTIVE_STATES_T } from 'app/definitions/general';
-import { TOOL } from 'app/lib/definitions/gcode_virtualization';
-import { WORKSPACE_MODE_T } from 'app/workspace/definitions';
-import { connectToLastDevice } from 'app/lib/connection';
-import { updateWorkspaceMode } from 'app/lib/rotary';
-import api from 'app/api';
+    closeConnection,
+    listPorts,
+    openConnection,
+    scanNetwork,
+    setConnectionState,
+} from '../slices/connection.slice';
+import {
+    addSDCardFileToList,
+    addSpindle,
+    clearSpindles,
+    resetHoming,
+    updateAlarmDescriptions,
+    updateAutoconfig,
+    updateControllerSettings,
+    updateControllerState,
+    updateControllerType,
+    updateFeederStatus,
+    updateHasHomed,
+    updateHomingFlag,
+    updateSenderStatus,
+    updateSettingsDescriptions,
+    updateWorkflowState,
+} from '../slices/controller.slice';
 import {
     unloadFileInfo,
     updateFileContent,
@@ -112,26 +140,35 @@ import {
 } from '../slices/fileInfo.slice';
 import { setIpList } from '../slices/preferences.slice';
 import { updateJobOverrides } from '../slices/visualizer.slice';
-import { toast } from 'app/lib/toaster';
-import { Job } from 'app/features/Stats/utils/StatContext';
-import { updateToolchangeContext } from 'app/features/Helper/Wizard.tsx';
-import { Spindle } from 'app/features/Spindle/definitions';
-import { AlarmsErrors } from 'app/definitions/alarms_errors';
-import { KeepoutToggle } from 'app/features/ATC/components/KeepOut/KeepOutToggle.tsx';
-import get from 'lodash/get';
 
-export function* initialize(): Generator<any, void, any> {
+interface Error {
+    type: typeof ALARM | typeof ERROR;
+    lineNumber: number;
+    code: number;
+    line: string;
+    description: string;
+    origin: string;
+    controller: 'grblHAL' | 'GRBL';
+}
+
+export function* initialize(): Generator<null, void, unknown> {
     let visualizeWorker: typeof VisualizeWorker | null = null;
     let visualizeJobId = 0;
     // let estimateWorker: EstimateWorker | null = null;
     let currentState: GRBL_ACTIVE_STATES_T = GRBL_ACTIVE_STATE_IDLE;
     let prevState: GRBL_ACTIVE_STATES_T = GRBL_ACTIVE_STATE_IDLE;
-    let errors: any[] = [];
+    let errors: string[] = [];
     let latestEstimateData: { estimates: number[]; estimatedTime: number } = {
         estimates: [],
         estimatedTime: 0,
     };
     let hasEstimateData = false;
+    // Seeded from [NEWOPT:...] on connect (via $I), then kept in sync with
+    // live [MSG:Info: Autoconfig: ...] updates — the reference point the
+    // accessory connectivity toast diffs against.
+    let accessoryBaselineConnected: Partial<
+        Record<AccessoryAutoconfigKey, boolean>
+    > = {};
 
     const clearEstimateDataCache = () => {
         latestEstimateData = {
@@ -149,13 +186,13 @@ export function* initialize(): Generator<any, void, any> {
         1000 * 60 * 3,
     );
 
-    const updateJobStats = async (status: any) => {
+    const updateJobStats = async (status: SenderStatus) => {
         const controllerType = _get(reduxStore.getState(), 'controller.type');
         const port = _get(reduxStore.getState(), 'connection.port');
         const path = _get(reduxStore.getState(), 'file.path');
 
         try {
-            let res = await api.jobStats.fetch();
+            const res = await api.jobStats.fetch();
             const jobStats = res.data;
 
             const job: Job = {
@@ -193,12 +230,12 @@ export function* initialize(): Generator<any, void, any> {
         }
     };
 
-    const updateMaintenanceTasks = async (status: any) => {
+    const updateMaintenanceTasks = async (status: SenderStatus) => {
         try {
-            let res = await api.maintenance.fetch();
-            const tasks = res.data;
-            let newTasks = tasks.map((task: any) => {
-                let newTask = task;
+            const res = await api.maintenance.fetch();
+            const tasks: MaintenanceTask[] = res.data;
+            const newTasks = tasks.map((task: MaintenanceTask) => {
+                const newTask = task;
                 newTask.currentTime += status.timeRunning / 1000 / 3600;
                 return newTask;
             });
@@ -390,9 +427,9 @@ export function* initialize(): Generator<any, void, any> {
         });
     };
 
-    const updateAlarmsErrors = async (error: any) => {
+    const updateAlarmsErrors = async (error: Error) => {
         try {
-            let res = await api.alarmList.fetch();
+            const res = await api.alarmList.fetch();
             const alarmList = res.data;
 
             const alarmError: AlarmsErrors = {
@@ -429,7 +466,7 @@ export function* initialize(): Generator<any, void, any> {
 
     controller.addListener(
         'controller:state',
-        (type: string, state: any, tool: TOOL) => {
+        (type: string, state: ControllerStateState, tool: TOOL) => {
             // if state is the same, don't update the prev and current state
             if (currentState !== state.status.activeState) {
                 prevState = currentState;
@@ -446,7 +483,7 @@ export function* initialize(): Generator<any, void, any> {
         reduxStore.dispatch(updateFeederStatus({ status }));
     });
 
-    controller.addListener('sender:status', (status: any) => {
+    controller.addListener('sender:status', (status: SenderStatus) => {
         // finished job or cancelled job
         // because elapsed time and time running only update on sender.next(), they may not be entirely accurate for stopped jobs
         if (
@@ -560,6 +597,8 @@ export function* initialize(): Generator<any, void, any> {
             // Reset homing run flag to prevent rapid position without running homing
             reduxStore.dispatch(resetHoming());
             reduxStore.dispatch(closeConnection());
+            // So a reconnect re-baselines cleanly from the next $I/NEWOPT response.
+            accessoryBaselineConnected = {};
 
             pubsub.publish('machine:disconnected');
         },
@@ -627,7 +666,7 @@ export function* initialize(): Generator<any, void, any> {
 
     controller.addListener(
         'gcode:toolChange',
-        async (context: any, comment = '') => {
+        async (context: BasicObject, comment = '') => {
             const payload = {
                 context,
                 comment,
@@ -639,24 +678,23 @@ export function* initialize(): Generator<any, void, any> {
 
             const { option, count } = context;
             if (option === 'Pause') {
-                const msg =
-                    'Toolchange pause' + (comment ? ` - ${comment}` : '');
+                const msg = `Toolchange pause${comment ? ` - ${comment}` : ''}`;
                 if (!skipDialog) {
                     toast.info(msg, { position: 'bottom-right' });
                 }
             } else {
-                let title, instructions;
+                let title: string, instructions: WizardInstructions;
 
                 if (option === 'Standard Re-zero') {
                     title = 'Standard Re-zero Tool Change';
                     instructions = manualToolChange;
                 } else if (option === 'Flexible Re-zero') {
                     title = 'Flexible Re-zero Tool Change';
-                    instructions = semiautoToolChange(count);
+                    instructions = semiautoToolChange(count as number);
                 } else if (option === 'Fixed Tool Sensor') {
                     title = 'Fixed Tool Sensor Tool Change';
                     instructions = await determineFixedSensorInstructions(
-                        count,
+                        count as number,
                         comment,
                     );
                 } else {
@@ -732,7 +770,7 @@ export function* initialize(): Generator<any, void, any> {
         },
     );
 
-    controller.addListener('ip:list', (ipList: string[]) => {
+    controller.addListener('ip:list', (ipList: NetworkAddress[]) => {
         reduxStore.dispatch(setIpList(ipList));
     });
 
@@ -821,6 +859,16 @@ export function* initialize(): Generator<any, void, any> {
         },
     );
 
+    pubsub.subscribe('spindle:mode', () => {
+        const state = reduxStore.getState();
+        const content: string | undefined = _get(state, 'file.content');
+        const size: number = _get(state, 'file.size', 0);
+        const name: string = _get(state, 'file.name', '');
+        if (content) {
+            parseGCode(content, size, name, VISUALIZER_PRIMARY);
+        }
+    });
+
     controller.addListener('workflow:pause', (opts: { data: string }) => {
         const { data } = opts;
 
@@ -895,46 +943,45 @@ export function* initialize(): Generator<any, void, any> {
             //     'controller.settings.settings.$22',
             // );
 
-            const showLineWarnings = store.get(
-                'widgets.visualizer.showLineWarnings',
-                false,
+        const showLineWarnings = store.get(
+            'widgets.visualizer.showLineWarnings',
+            false,
+        );
+        if (showLineWarnings && error.type === ERROR) {
+            pubsub.publish('helper:info', {
+                title: 'Invalid Line',
+                description: (
+                    <div className="flex flex-col gap-2">
+                        <p>
+                            The following line caused an{' '}
+                            <b>error {error.code}</b>: <i>'{error.line}'</i>
+                        </p>
+                        <p>Press Start to resume the job.</p>
+                    </div>
+                ),
+            });
+        }
+
+        if (ALARM_ERROR_TYPES.includes(error.type)) {
+            updateAlarmsErrors(error);
+            toast.error(
+                `${error.type === ALARM ? 'Alarm' : 'Error'} ${error.code}: ${error.description}`,
+                { position: 'bottom-right' },
             );
-            if (showLineWarnings && error.type === ERROR) {
-                pubsub.publish('helper:info', {
-                    title: 'Invalid Line',
-                    description: (
-                        <div className="flex flex-col gap-2">
-                            <p>
-                                The following line caused an{' '}
-                                <b>error {error.code}</b>: <i>'{error.line}'</i>
-                            </p>
-                            <p>Press Start to resume the job.</p>
-                        </div>
-                    ),
-                });
-            }
+        }
 
-            if (ALARM_ERROR_TYPES.includes(error.type)) {
-                updateAlarmsErrors(error);
-                toast.error(
-                    `${error.type === ALARM ? "Alarm" : "Error"} ${error.code}: ${error.description}`,
-                    { position: "bottom-right" },
-                );
-            }
+        pubsub.publish('error', error);
 
-            pubsub.publish('error', error);
-
-            // TODO: utilize this if needed, currently not used in new app, try not to use pubsubs
-            // set need recovery for start from line when alarm happens
-            // if (error.type === ALARM && wasRunning) {
-            //     pubsub.publish(
-            //         'disconnect:recovery',
-            //         error.lineNumber,
-            //         homingEnabled,
-            //     );
-            // }
-        },
-    );
+        // TODO: utilize this if needed, currently not used in new app, try not to use pubsubs
+        // set need recovery for start from line when alarm happens
+        // if (error.type === ALARM && wasRunning) {
+        //     pubsub.publish(
+        //         'disconnect:recovery',
+        //         error.lineNumber,
+        //         homingEnabled,
+        //     );
+        // }
+    });
 
     controller.addListener(
         'wizard:next',
@@ -997,7 +1044,7 @@ export function* initialize(): Generator<any, void, any> {
         },
     );
 
-    controller.addListener('settings:alarms', (data: BasicObject) => {
+    controller.addListener('settings:alarms', (data: AlarmsData) => {
         reduxStore.dispatch(updateAlarmDescriptions({ alarms: data }));
     });
 
@@ -1024,6 +1071,68 @@ export function* initialize(): Generator<any, void, any> {
         if (!file) return;
         reduxStore.dispatch(addSDCardFileToList({ file }));
     });
+
+    controller.addListener(
+        'grblHal:info',
+        (payload: { name: string; value: unknown }) => {
+            if (
+                payload.name !== 'NEWOPT' ||
+                typeof payload.value !== 'object' ||
+                !payload.value
+            ) {
+                return;
+            }
+
+            const newopt = payload.value as Record<string, string | null>;
+            const accessoryValues: Record<string, string> = {};
+            ACCESSORY_AUTOCONFIG_KEYS.forEach((key) => {
+                if (key in newopt) {
+                    accessoryBaselineConnected[key] = isAccessoryConnected(
+                        newopt[key],
+                    );
+                    accessoryValues[key] = newopt[key] ?? '0';
+                }
+            });
+
+            if (Object.keys(accessoryValues).length > 0) {
+                reduxStore.dispatch(
+                    updateAutoconfig({ values: accessoryValues }),
+                );
+            }
+        },
+    );
+
+    controller.addListener(
+        'grblHal:autoconfig',
+        (payload: { values: Record<string, string> }) => {
+            Object.entries(payload.values).forEach(([key, value]) => {
+                if (
+                    !ACCESSORY_AUTOCONFIG_KEYS.includes(
+                        key as AccessoryAutoconfigKey,
+                    )
+                ) {
+                    return;
+                }
+
+                const nowConnected = isAccessoryConnected(value);
+                const previouslyConnected =
+                    accessoryBaselineConnected[key as AccessoryAutoconfigKey];
+                if (
+                    previouslyConnected !== undefined &&
+                    previouslyConnected !== nowConnected
+                ) {
+                    showAccessoryConnectivityToast(
+                        key,
+                        nowConnected ? 'connected' : 'disconnected',
+                    );
+                }
+                accessoryBaselineConnected[key as AccessoryAutoconfigKey] =
+                    nowConnected;
+            });
+
+            reduxStore.dispatch(updateAutoconfig(payload));
+        },
+    );
 
     controller.addListener(
         'atci',
@@ -1066,7 +1175,7 @@ export function* initialize(): Generator<any, void, any> {
                     },
                     hideClose: true,
                 });
-            } else if ((payload.subtype = '10')) {
+            } else if (payload.subtype === '10') {
                 pubsub.publish('helper:info', {
                     title: 'Jogging Inside Keepout Area',
                     content: (
@@ -1077,6 +1186,8 @@ export function* initialize(): Generator<any, void, any> {
                     ),
                     description:
                         'You are attempting to jog inside the keepout area.  Disable keepout using the switch below and then re-enable to continue',
+                    resourceLink:
+                        'https://resources.sienci.com/view/atc-final-checks/#troubleshooting',
                 });
             } else {
                 Confirm({

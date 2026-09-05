@@ -1,15 +1,13 @@
-import Markdown from 'react-markdown';
-import { ReactMarkdownProps } from 'react-markdown/lib/ast-to-react';
-import { FaExternalLinkAlt } from 'react-icons/fa';
-
-import { version } from 'app-root/package.json';
-
-import useGetReleaseNotes from './utils/useGetReleaseNotes';
 import { Button } from 'app/components/Button';
-import { cn } from 'app/lib/utils';
-import { RootState } from 'app/store/redux';
-import { useSelector } from 'react-redux';
 import { UpdateGSender } from 'app/features/Stats/components/UpdateGSender.tsx';
+import { cn } from 'app/lib/utils';
+import type { RootState } from 'app/store/redux';
+import { version } from 'app-root/package.json';
+import { FaExternalLinkAlt } from 'react-icons/fa';
+import Markdown from 'react-markdown';
+import type { ReactMarkdownProps } from 'react-markdown/lib/ast-to-react';
+import { useSelector } from 'react-redux';
+import useGetReleaseNotes from './utils/useGetReleaseNotes';
 
 const About = () => {
     const { releaseNotes, status, fetchReleaseNotes } = useGetReleaseNotes();
@@ -99,7 +97,7 @@ const About = () => {
                         h3: (props: ReactMarkdownProps) => (
                             <h3
                                 className={cn(
-                                    'text-xl font-bold underline dark:text-white',
+                                    'text-xl font-bold underline dark:text-content-primary',
                                     {
                                         'mt-8': index !== 0,
                                     },
@@ -109,12 +107,12 @@ const About = () => {
                             </h3>
                         ),
                         ul: (props: ReactMarkdownProps) => (
-                            <ul className="ml-4 list-disc [&>li]:mt-2 dark:text-white">
+                            <ul className="ml-4 list-disc [&>li]:mt-2 dark:text-content-primary">
                                 {props.children}
                             </ul>
                         ),
                         li: (props: ReactMarkdownProps) => (
-                            <li className="leading-7 dark:text-white">
+                            <li className="leading-7 dark:text-content-primary">
                                 {props.children}
                             </li>
                         ),
@@ -136,22 +134,22 @@ const About = () => {
                         width={125}
                         height={125}
                     />
-                    <div className="dark:text-white">
+                    <div className="dark:text-content-primary">
                         <h1 className="text-3xl font-bold">gSender</h1>
-                        <p className="text-sm text-gray-500 dark:text-white">
+                        <p className="text-sm text-gray-500 dark:text-content-primary">
                             By Sienci Labs
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-white">
+                        <p className="text-sm text-gray-500 dark:text-content-primary">
                             Version {version}
                         </p>
                     </div>
                 </div>
                 <div className="flex flex-col items-end gap-2 text-sm">
-                    <p className=" text-gray-500 dark:text-white">
+                    <p className=" text-gray-500 dark:text-content-primary">
                         Copyright © {new Date().getFullYear()} Sienci Labs Inc.
                     </p>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500 dark:text-white">
+                        <span className="text-sm text-gray-500 dark:text-content-primary">
                             Made in Canada
                         </span>
                         <img src={canadaFlag.href} alt="Canada Flag" />
@@ -169,7 +167,7 @@ const About = () => {
                 </div>
             </div>
 
-            <p className="text-md md:text-lg dark:text-white">
+            <p className="text-md md:text-lg dark:text-content-primary">
                 gSender is a free and feature-packed CNC control software,
                 designed to be clean and easy to learn while retaining a depth
                 of capabilities for advanced users. Many thousands of people
@@ -180,7 +178,7 @@ const About = () => {
 
             <div>
                 <h2 className="text-2xl text-blue-500 mb-2">gSender Team</h2>
-                <div className="text-md md:text-lg dark:text-white">
+                <div className="text-md md:text-lg dark:text-content-primary">
                     {team.map((member, index) => (
                         <span key={member.name}>
                             <strong>{member.name}</strong> ({member.title})
@@ -193,7 +191,9 @@ const About = () => {
             {!hasUpdate && (
                 <div className="h-full flex flex-col gap-2">
                     <div className="flex gap-2 items-center justify-between">
-                        <h2 className="text-2xl text-blue-500">Release Notes</h2>
+                        <h2 className="text-2xl text-blue-500">
+                            Release Notes
+                        </h2>
 
                         <a
                             className="text-sm text-blue-500 underline"

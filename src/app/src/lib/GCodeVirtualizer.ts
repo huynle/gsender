@@ -1,12 +1,11 @@
+import type { BasicPosition, BBox } from 'app/definitions/general';
 import { EventEmitter } from 'events';
-
 import { FILE_TYPE } from '../constants';
 import {
     createFastLineScanScratch,
-    FastLineScanScratch,
+    type FastLineScanScratch,
     scanLineFast,
 } from './GCodeParser';
-import { BasicPosition, BBox } from 'app/definitions/general';
 
 interface Modal {
     motion: string;
@@ -34,9 +33,9 @@ interface RotationResult {
 type SpindleToolEventCode = 'S' | 'T' | 'M' | 'TC';
 
 interface SpindleToolEvent {
-    S?: Number;
-    T?: Number;
-    M?: Number;
+    S?: number;
+    T?: number;
+    M?: number;
     TC?: boolean;
     comment?: string;
 }
@@ -1295,7 +1294,10 @@ class GCodeVirtualizer extends EventEmitter {
         let groupCount = 0;
         for (let i = 0; i < scan.count; ++i) {
             const letter = letters[i];
-            if ((letter === 'G' || letter === 'M' || letter === 'T') && i > groupStart) {
+            if (
+                (letter === 'G' || letter === 'M' || letter === 'T') &&
+                i > groupStart
+            ) {
                 groupCount += 1;
                 this.dispatchTokenGroup(letters, values, groupStart, i);
                 groupStart = i;
@@ -1308,7 +1310,10 @@ class GCodeVirtualizer extends EventEmitter {
         this.profileStats.groupsSeen += groupCount;
 
         const currentEvent = this.vmState.spindleToolEvents[this.totalLines];
-        if (currentEvent && (currentEvent.T !== undefined || currentEvent.M !== undefined)) {
+        if (
+            currentEvent &&
+            (currentEvent.T !== undefined || currentEvent.M !== undefined)
+        ) {
             const commentRegex = /\(([^)]*)\)|;(.*)/g;
             const parts: string[] = [];
             let cm: RegExpExecArray | null;
@@ -1571,14 +1576,14 @@ class GCodeVirtualizer extends EventEmitter {
 
     calculateMachiningTime(endPos: BasicPosition, v1?: BasicPosition): void {
         let moveDuration = 0;
-        let currentPos = v1 || this.position;
+        const currentPos = v1 || this.position;
 
         const dx = endPos.x - currentPos.x;
         const dy = endPos.y - currentPos.y;
         const dz = endPos.z - currentPos.z;
         const da = (endPos.a ?? 0) - (currentPos.a ?? 0);
 
-        let travelXY = Math.hypot(dx, dy);
+        const travelXY = Math.hypot(dx, dy);
         if (Number.isNaN(travelXY)) {
             console.error(
                 'Invalid travel while calculating distance between V1 and V2',
@@ -1587,7 +1592,7 @@ class GCodeVirtualizer extends EventEmitter {
         }
 
         // Calculate linear travel distance (XYZ)
-        let linearTravel = Math.hypot(travelXY, dz);
+        const linearTravel = Math.hypot(travelXY, dz);
 
         // Calculate rotary travel distance
         // Convert angular motion (degrees) to linear distance (mm) using the rotary diameter
@@ -1636,8 +1641,10 @@ class GCodeVirtualizer extends EventEmitter {
         if (da !== 0) {
             // A-axis feedrate is in degrees/min, not mm/min
             // Convert it to equivalent mm/min based on the workpiece diameter
-            const aMaxFeedLinear = (this.aMaxFeed / 360) * (Math.PI * this.rotaryDiameter);
-            const aAccelLinear = (this.aAccel / 360) * (Math.PI * this.rotaryDiameter);
+            const aMaxFeedLinear =
+                (this.aMaxFeed / 360) * (Math.PI * this.rotaryDiameter);
+            const aAccelLinear =
+                (this.aAccel / 360) * (Math.PI * this.rotaryDiameter);
 
             maxFeedArray.push(aMaxFeedLinear);
             accelArray.push(aAccelLinear);
@@ -1710,7 +1717,8 @@ class GCodeVirtualizer extends EventEmitter {
             // Convert it to equivalent linear speed based on workpiece diameter
             if (da !== 0 && dx === 0 && dy === 0 && dz === 0) {
                 // Pure rotary move: F is in degrees/min, convert to mm/min
-                const feedDegPerMin = this.modal.units === 'G20' ? feed * 25.4 : feed;
+                const feedDegPerMin =
+                    this.modal.units === 'G20' ? feed * 25.4 : feed;
                 feed = (feedDegPerMin / 360) * (Math.PI * this.rotaryDiameter);
             } else {
                 // Linear move: F is already in mm/min (or inches/min)
@@ -1785,7 +1793,7 @@ class GCodeVirtualizer extends EventEmitter {
         if (!this.vmState.spindleToolEvents[this.totalLines]) {
             this.vmState.spindleToolEvents[this.totalLines] = { [word]: code };
         } else {
-            // @ts-ignore
+            // @ts-expect-error
             this.vmState.spindleToolEvents[this.totalLines][word] = code;
         }
     }

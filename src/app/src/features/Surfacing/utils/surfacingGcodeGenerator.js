@@ -1,33 +1,30 @@
-import Toolpath from './gcode-toolpath';
-import get from 'lodash/get';
-
-import store from 'app/store';
 import {
-    METRIC_UNITS,
     IMPERIAL_UNITS,
+    METRIC_UNITS,
+    SPINDLE_MODES,
     SPIRAL_MOVEMENT,
-    ZIG_ZAG_MOVEMENT,
     START_POSITION_BACK_LEFT,
     START_POSITION_BACK_RIGHT,
+    START_POSITION_CENTER,
     START_POSITION_FRONT_LEFT,
     START_POSITION_FRONT_RIGHT,
-    START_POSITION_CENTER,
-    SPINDLE_MODES,
     SURFACING_DWELL_DURATION,
+    ZIG_ZAG_MOVEMENT,
 } from 'app/constants';
 import controller from 'app/lib/controller';
+import { convertToImperial } from 'app/lib/units';
+import store from 'app/store';
 import defaultState from 'app/store/defaultState';
 import reduxStore from 'app/store/redux';
-
-import { convertToImperial } from '../../Preferences/calculate';
+import get from 'lodash/get';
+import Toolpath from './gcode-toolpath';
 
 const [M3] = SPINDLE_MODES;
 
 export default class Generator {
-    constructor({ surfacing, units, rampingDegrees = 10 }) {
+    constructor({ surfacing, units }) {
         this.surfacing = surfacing;
         this.units = units;
-        this.rampingDegrees = rampingDegrees;
     }
 
     /**
@@ -56,10 +53,11 @@ export default class Generator {
         const dwell = shouldDwell ? [`G04 P${SURFACING_DWELL_DURATION}`] : [];
         const m7 = mist ? ['M7'] : [];
         const m8 = flood ? ['M8'] : [];
-        const setUnits = {
-            [METRIC_UNITS]: 'G21 ;mm',
-            [IMPERIAL_UNITS]: 'G20 ;inches',
-        }[units] ?? 'G21 ;mm';
+        const setUnits =
+            {
+                [METRIC_UNITS]: 'G21 ;mm',
+                [IMPERIAL_UNITS]: 'G20 ;inches',
+            }[units] ?? 'G21 ;mm';
 
         const depth = skimDepth;
         const gcodeArr = [
@@ -79,15 +77,13 @@ export default class Generator {
         ];
 
         function processGcode(arr, depth, count, maxDepth) {
-            const isLastLayer = depth >= maxDepth;
             const gcodeLayer = generateGcode({
                 depth: depth < maxDepth ? depth : maxDepth,
                 count,
-                isLastLayer,
             });
             arr.push(...gcodeLayer);
 
-            if (isLastLayer) {
+            if (depth >= maxDepth) {
                 return arr;
             }
 
@@ -100,9 +96,13 @@ export default class Generator {
 
         const m9 = mist || flood ? ['M9 ;Turn off Coolant'] : [];
 
-        // Note: the spindle is stopped before the final rapid back to the
-        // start position (see returnToZero), not here in the footer.
-        gcodeArr.push('(Footer)', ...m9, '(End of Footer)');
+        gcodeArr.push(
+            '(Footer)',
+            ...m9,
+            'M5 ;Turn off spindle',
+            ...dwell,
+            '(End of Footer)',
+        );
 
         if (returnArray) {
             return gcodeArr;
@@ -120,7 +120,7 @@ export default class Generator {
      * @param {number} count - Count value keeping track of the number of layers
      * @returns {array} - Returns the generated gcode set in an array
      */
-    generateGcode = ({ depth, count, isLastLayer = false }) => {
+    generateGcode = ({ depth, count }) => {
         const {
             bitDiameter,
             stepover,
@@ -162,7 +162,6 @@ export default class Generator {
             axisFactors,
             cutDirectionFlipped,
             startPosition,
-            isLastLayer,
         };
 
         const executeSurfacing = {
@@ -197,41 +196,51 @@ export default class Generator {
         return Number(value.toFixed(amount));
     }
 
-    rampIntoMaterial = (z, direction = { axis: 'Y', factor: 1 }) => {
-        const { axis, factor } = direction;
-        const degrees = this.rampingDegrees;
-        const { skimDepth } = this.surfacing;
-        const units = store.get('workspace.units');
-        const depth = skimDepth;
-        const EXTRA_LENGTH = units === METRIC_UNITS ? 1 : convertToImperial(1);
-        const safeHeight = this.getSafeZValue();
-        const EXTRA_RAMP_COAST =
-            units === METRIC_UNITS ? 5 : convertToImperial(5);
-        const RAMP_HEIGHT = Math.abs(depth) * -1 - safeHeight;
+    rampIntoMaterial = (direction = { axis: 'Y', factor: 1 }) => {
+        const RAMP_ANGLE_DEGREES = 2;
+        const MAX_ZIGZAG_LENGTH_MM = 150;
 
-        const rampingLength = Number(
-            (
-                (depth + safeHeight + EXTRA_LENGTH) /
-                getTanFromDegrees(degrees)
-            ).toFixed(2),
+        const { axis, factor } = direction;
+        const { skimDepth, bitDiameter, width, length } = this.surfacing;
+        const units = store.get('workspace.units');
+        const safeHeight = this.getSafeZValue();
+
+        const totalZDrop = safeHeight + Math.abs(skimDepth);
+
+        // Zigzag length: min surface dimension minus one full bit diameter (to stay within bounds),
+        // capped at `MAX_ZIGZAG_LENGTH_MM` so the ramp doesn't span the entire workpiece on large jobs.
+        const minDimension = Math.min(Math.abs(width), Math.abs(length));
+        const maxZigzagLength =
+            units === METRIC_UNITS
+                ? MAX_ZIGZAG_LENGTH_MM
+                : convertToImperial(MAX_ZIGZAG_LENGTH_MM);
+
+        const zigzagLength = Math.max(
+            bitDiameter,
+            Math.min(minDimension - bitDiameter, maxZigzagLength),
         );
 
-        function getTanFromDegrees(degrees) {
-            return Math.tan((degrees * Math.PI) / 180);
+        const zPerLeg =
+            zigzagLength * Math.tan((RAMP_ANGLE_DEGREES * Math.PI) / 180);
+
+        // Use an even number of legs so the tool returns to the start XY position after ramping
+        const numLegsRaw = Math.ceil(totalZDrop / zPerLeg);
+        const numLegs = numLegsRaw % 2 === 0 ? numLegsRaw : numLegsRaw + 1;
+
+        // Spread the total Z drop evenly across all legs (keeps angle at or below `RAMP_ANGLE_DEGREES`)
+        const actualZPerLeg = Number((totalZDrop / numLegs).toFixed(3));
+        const rampingArr = ['(Ramping into Material)', 'G91'];
+
+        for (let i = 0; i < numLegs; i++) {
+            // Switch direction on each leg to create a zigzag pattern
+            const legFactor = i % 2 === 0 ? factor : factor * -1;
+
+            rampingArr.push(
+                `G1 ${axis}${Number((zigzagLength * legFactor).toFixed(3))} Z${-actualZPerLeg}`,
+            );
         }
 
-        const rampingArr = [];
-
-        rampingArr.push(
-            '(Ramping into Material)',
-            'G91',
-            `G1 ${axis}${rampingLength * factor} Z${RAMP_HEIGHT}`,
-            `G1 ${axis}${EXTRA_RAMP_COAST * factor}`,
-            `G1 ${axis}${(rampingLength + EXTRA_RAMP_COAST) * factor * -1}`,
-            'G90',
-            '(End of Ramping into Material)',
-            '',
-        );
+        rampingArr.push('G90', '(End of Ramping into Material)', '');
 
         return rampingArr;
     };
@@ -245,7 +254,7 @@ export default class Generator {
         startPosition,
         cutDirectionFlipped,
     ) => {
-        const enterMaterial = this.rampIntoMaterial(z, direction);
+        const enterMaterial = this.rampIntoMaterial(direction);
 
         let mainPerimeterArea = [
             'G91',
@@ -329,24 +338,12 @@ export default class Generator {
         return zVal;
     }
 
-    returnToZero = (stopSpindle = false) => {
+    returnToZero = () => {
         const z = this.getSafeZValue();
-        const { shouldDwell } = this.surfacing;
-
-        // Stop the spindle once we've retracted to the safe Z height (so it
-        // isn't stopped while the bit is still touching the surface) but
-        // before rapiding back home in X/Y.
-        const spindleStop = stopSpindle
-            ? [
-                  'M5 ;Turn off spindle',
-                  ...(shouldDwell ? [`G04 P${SURFACING_DWELL_DURATION}`] : []),
-              ]
-            : [];
 
         return [
             '(Returning to Zero)',
             `G0 Z${z}`,
-            ...spindleStop,
             'G0 X0 Y0',
             '(End of Returning to Zero)',
             '',
@@ -521,7 +518,7 @@ export default class Generator {
             getNewStartPos,
             getNewEndPos,
         );
-        const returnToStart = returnToZero(options.isLastLayer);
+        const returnToStart = returnToZero();
         const spiralStartArea = enterSpiralStartArea(
             stepoverAmount * xFactor,
             stepoverAmount * yFactor,
@@ -854,7 +851,7 @@ export default class Generator {
             getNewStartPos,
             getNewEndPos,
         );
-        const returnToStart = returnToZero(options.isLastLayer);
+        const returnToStart = returnToZero();
 
         const startArea = [
             '(Entering Start Area)',
@@ -883,7 +880,7 @@ export default class Generator {
         const gcodeArr = startIsInCenter
             ? [
                   ...startArea,
-                  ...rampIntoMaterial(z, direction),
+                  ...rampIntoMaterial(direction),
                   ...startFromCenterPerimeter,
                   ...spirals,
                   ...returnToStart,

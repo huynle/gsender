@@ -1,7 +1,7 @@
-import { ButtonVariants } from 'app/components/Button';
+import type { ButtonVariants } from 'app/components/Button';
 import controller from 'app/lib/controller';
 import store from 'app/store';
-import { createContext, useContext, ReactNode, useState } from 'react';
+import { createContext, type ReactNode, useContext, useState } from 'react';
 
 type Point = {
     id: number;
@@ -68,6 +68,7 @@ export type SquaringContextType = {
     triangle: Triangle;
     jogValues: JogValues;
     shapes: Shapes;
+    isCurrentStepComplete?: boolean;
     completeStep: (buttonLabel: string) => void;
     updateTriangle: (side: keyof Triangle, value: number) => void;
     updateStepValue: (buttonLabel: string, value: number) => void;
@@ -77,6 +78,10 @@ export type SquaringContextType = {
     resetSquaring: () => void;
     isStepEnabled: (mainStepIndex: number, subStepIndex: number) => boolean;
     canGoToNextMainStep: () => boolean;
+    onPrevious: () => void;
+    onNext: () => void;
+    reset: () => void;
+    getItemParams: () => string;
 };
 
 const initialShapes: Shapes = {
@@ -117,6 +122,11 @@ const initialMainSteps = (): MainStep[] => {
     const units = store.get('workspace.units', 'mm');
 
     return [
+        {
+            title: 'Initial Setup',
+            description: '',
+            subSteps: [],
+        },
         {
             title: 'Mark Reference Points',
             description:
@@ -287,20 +297,6 @@ const initialMainSteps = (): MainStep[] => {
                 },
             ],
         },
-        {
-            title: 'Results',
-            description:
-                'Review the results and get adjustment recommendations.',
-            subSteps: [
-                {
-                    buttonLabel: 'View Results',
-                    description:
-                        'View the squaring results and recommendations.',
-                    completed: false,
-                    output: null,
-                },
-            ],
-        },
     ];
 };
 
@@ -315,6 +311,8 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
     const [currentMainStep, setCurrentMainStep] = useState(0);
     const [currentSubStep, setCurrentSubStep] = useState(0);
     const [mainSteps, setMainSteps] = useState<MainStep[]>(initialMainSteps());
+    const [isCurrentStepComplete, setIsCurrentStepComplete] =
+        useState<boolean>(false);
 
     const isStepEnabled = (mainStepIndex: number, subStepIndex: number) => {
         // If it's a previous main step, it's always enabled
@@ -362,6 +360,11 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
                         ? { ...step, completed: true }
                         : step,
             );
+
+            const stepComplete = currentMainStepData.subSteps.every(
+                (step) => step.completed,
+            );
+            setIsCurrentStepComplete(stepComplete);
 
             // Move to next incomplete sub-step if there is one
             const nextIncompleteIndex = currentMainStepData.subSteps.findIndex(
@@ -485,15 +488,36 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
         if (currentMainStep < mainSteps.length - 1) {
             setCurrentMainStep((prev) => prev + 1);
             setCurrentSubStep(0);
+            setIsCurrentStepComplete(false);
+            setMainSteps;
         }
     };
 
+    const onNext = goToNextMainStep;
+
     const goToPreviousMainStep = () => {
         if (currentMainStep > 0) {
+            setMainSteps((prevMainSteps) => {
+                const updatedMainSteps = [...prevMainSteps];
+                // reset both current step and previous step
+                const currentMainStepData = updatedMainSteps[currentMainStep];
+                currentMainStepData.subSteps.forEach((substep) => {
+                    substep.completed = false;
+                });
+
+                const previousMainStepData =
+                    updatedMainSteps[currentMainStep - 1];
+                previousMainStepData.subSteps.forEach((substep) => {
+                    substep.completed = false;
+                });
+                return updatedMainSteps;
+            });
             setCurrentMainStep((prev) => prev - 1);
             setCurrentSubStep(0);
         }
     };
+
+    const onPrevious = goToPreviousMainStep;
 
     const resetSquaring = () => {
         // Create deep copies of initial states to ensure a fresh start
@@ -515,6 +539,20 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
         setJogValues({ x: 0, y: 0, z: 0 });
     };
 
+    const reset = resetSquaring;
+
+    const getItemParams = () => {
+        return '';
+    };
+
+    // const checkIfCurrentStepComplete = () => {
+    // 	const currentStepData = mainSteps[currentMainStep];
+    // 	console.log(currentStepData.subSteps);
+    // 	const stepComplete = currentStepData.subSteps.every((step) => step.completed);
+    // 	setIsCurrentStepComplete(stepComplete);
+    // 	return stepComplete;
+    // };
+
     return (
         <SquaringContext.Provider
             value={{
@@ -524,6 +562,7 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
                 triangle,
                 jogValues,
                 shapes,
+                isCurrentStepComplete,
                 completeStep,
                 updateTriangle,
                 updateStepValue,
@@ -533,6 +572,10 @@ export const SquaringProvider = ({ children }: { children: ReactNode }) => {
                 resetSquaring,
                 isStepEnabled,
                 canGoToNextMainStep,
+                onPrevious,
+                onNext,
+                reset,
+                getItemParams,
             }}
         >
             {children}

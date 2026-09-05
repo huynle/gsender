@@ -21,14 +21,14 @@
  *
  */
 
-import get from 'lodash/get';
-import { FaQuestion } from 'react-icons/fa6';
-import { store as reduxStore } from '../../store/redux';
 import { GRBLHAL } from 'app/constants';
+import get from 'lodash/get';
+import pubsub from 'pubsub-js';
+import { FaQuestion } from 'react-icons/fa6';
 import { GRBL_ALARMS } from '../../../../server/controllers/Grbl/constants';
 import { GRBL_HAL_ALARMS } from '../../../../server/controllers/Grblhal/constants';
-import { ALARM_CODE } from './definitions';
-import pubsub from 'pubsub-js';
+import { store as reduxStore } from '../../store/redux';
+import type { ALARM_CODE } from './definitions';
 
 const getCodeDescription = (code: number | 'Homing' = 1): string => {
     const controllerType: string = get(
@@ -54,8 +54,9 @@ const getCodeDescription = (code: number | 'Homing' = 1): string => {
 const AlarmDescriptionIcon = ({ code = 1 }: { code: ALARM_CODE }) => {
     const sendAlarmDescription = () => {
         pubsub.publish('helper:info', {
-            title: 'Alarm Code ' + code,
+            title: `Alarm Code ${code}`,
             description: getCodeDescription(code),
+            qrCode: 'https://resources.sienci.com/view/gs-gsender-grbl-alarm-error-codes/#alarms',
         });
     };
 

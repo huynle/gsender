@@ -1,13 +1,14 @@
-import cn from 'classnames';
-import { MouseEventHandler } from 'react';
-import { SettingsMenuSection } from '../assets/SettingsMenu';
 import { useSettings } from 'app/features/Config/utils/SettingsContext.tsx';
-import React from 'react';
+import cn from 'classnames';
+import type React from 'react';
+import { type MouseEventHandler, useEffect } from 'react';
+import type { IconType } from 'react-icons';
+import type { SettingsMenuSection } from '../assets/SettingsMenu';
 
 interface MenuProps {
     menu: SettingsMenuSection[];
     onClick?: (
-        e: React.MouseEventHandler<HTMLButtonElement>,
+        e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
         n: number,
     ) => void;
     activeSection: string;
@@ -16,8 +17,8 @@ interface MenuProps {
 interface MenuItemProps {
     label: string;
     active?: boolean;
-    onClick?: (e: MouseEventHandler<HTMLButtonElement>, n: number) => void;
-    icon: (p) => JSX.Element;
+    onClick?: MouseEventHandler<HTMLButtonElement>;
+    icon: IconType;
     available: number;
 }
 
@@ -51,7 +52,7 @@ function MenuItem({ label, active, onClick, icon, available }: MenuItemProps) {
                 {icon({
                     className: active
                         ? 'text-blue-500'
-                        : 'text-gray-600 group-hover:text-blue-500 hover:text-blue-500 dark:text-white',
+                        : 'text-gray-600 group-hover:text-blue-500 hover:text-blue-500 dark:text-content-primary',
                 })}
             </span>
             <span>{label}</span>
@@ -61,6 +62,11 @@ function MenuItem({ label, active, onClick, icon, available }: MenuItemProps) {
 
 export function Menu({ menu, onClick, activeSection }: MenuProps) {
     const { settingsFilter } = useSettings();
+
+    useEffect(() => {
+        const index = Number(activeSection.split('-')[2]);
+        onClick(null, index);
+    }, []);
 
     const originalMenuLength = menu.length;
 
@@ -75,9 +81,8 @@ export function Menu({ menu, onClick, activeSection }: MenuProps) {
     });
 
     return (
-        //
         <div
-            className="flex flex-col w-1/5 border border-gray-200 border-l-0 pl-1 divide-y bg-white max-sm:hidden dark:bg-dark dark:border-gray-700 dark:text-white"
+            className="flex flex-col w-1/5 border border-gray-200 border-l-0 pl-1 divide-y bg-white max-sm:hidden dark:bg-surface-raised dark:border-outline dark:text-content-primary"
             style={
                 {
                     '--menu-col-length': originalMenuLength,
@@ -86,7 +91,7 @@ export function Menu({ menu, onClick, activeSection }: MenuProps) {
         >
             {filteredSettings.map((item, index) => {
                 const availableSettings = tallySettings(item);
-                let active = `h-section-${index}` === activeSection;
+                const active = `h-section-${index}` === activeSection;
                 return (
                     <MenuItem
                         key={`menu-item-${index}`}
@@ -94,10 +99,7 @@ export function Menu({ menu, onClick, activeSection }: MenuProps) {
                         label={item.label}
                         active={active}
                         icon={item.icon}
-                        onClick={(
-                            e: MouseEventHandler<HTMLButtonElement>,
-                            i: number,
-                        ) => onClick(e, index)}
+                        onClick={(e) => onClick(e, index)}
                     />
                 );
             })}

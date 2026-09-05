@@ -20,28 +20,27 @@
  * of Sienci Labs Inc. in Waterloo, Ontario, Canada.
  *
  */
-
+import type { MachineProfile } from 'app/definitions/firmware';
+import { defaultATCIMacros } from 'app/features/ATC/assets/defaultATCIMacros.ts';
+import machineProfiles from 'app/features/Config/assets/MachineDefaults/defaultMachineProfiles.ts';
+import type { SPINDLE } from 'app/lib/definitions/gcode_virtualization';
 import {
+    DEFAULT_FIRMWARE_SETTINGS,
+    GRBLHAL,
+    LIGHTWEIGHT_OPTIONS,
     METRIC_STEPS,
     METRIC_UNITS,
+    OUTLINE_MODE_DETAILED,
+    ROTARY_MODE_FIRMWARE_SETTINGS,
     SPINDLE_MODE,
+    SPINDLE_MODES,
     SPIRAL_MOVEMENT,
     START_POSITION_BACK_LEFT,
-    SPINDLE_MODES,
     WORKSPACE_MODE,
-    ROTARY_MODE_FIRMWARE_SETTINGS,
-    DEFAULT_FIRMWARE_SETTINGS,
-    LIGHTWEIGHT_OPTIONS,
-    GRBLHAL,
-    OUTLINE_MODE_DETAILED,
 } from '../../constants';
 
-import machineProfiles from 'app/features/Config/assets/MachineDefaults/defaultMachineProfiles.ts';
+import type { State } from '../definitions';
 import { profiles } from './gamepad';
-import { State } from '../definitions';
-import { MachineProfile } from 'app/definitions/firmware';
-import { SPINDLE } from 'app/lib/definitions/gcode_virtualization';
-import { defaultATCIMacros } from 'app/features/ATC/assets/defaultATCIMacros.ts';
 
 const [M3] = SPINDLE_MODES;
 
@@ -70,6 +69,8 @@ const defaultState: State = {
         promptExit: false,
         backupFreq: 'On Update',
         powerSaving: false,
+        backupLoc: '',
+        userPluginsDir: '',
         lastBackupTime: 0,
         collectUsageDataStatus: 'pending',
         jobTimes: [],
@@ -177,6 +178,7 @@ const defaultState: State = {
         notifications: [],
         toastDuration: 0,
         enableDarkMode: false,
+        usePendantViewAsDefault: false,
         accessibility: {
             statusAnnouncements: false,
             jobProgressAnnouncements: false,
@@ -236,6 +238,13 @@ const defaultState: State = {
                     aStep: 0.5,
                     xaStep: 0.5,
                     feedrate: 1000,
+                },
+                custom: {
+                    xyStep: 5,
+                    zStep: 2,
+                    aStep: 5,
+                    xaStep: 5,
+                    feedrate: 3000,
                 },
                 step: METRIC_STEPS.indexOf(1), // Defaults to 1 mm
                 distances: [],
@@ -427,7 +436,7 @@ const defaultState: State = {
             disabled: false,
             disabledLite: false,
             minimizeRenders: false,
-            projection: 'orthographic', // 'perspective' or 'orthographic'
+            projection: 'Perspective', // 'Perspective' or 'Orthographic'
             cameraMode: 'pan', // 'pan' or 'rotate',
             theme: 'Dark',
             SVGEnabled: false,
@@ -441,6 +450,10 @@ const defaultState: State = {
             objects: {
                 limits: {
                     visible: true,
+                },
+                machineBed: {
+                    visible: false,
+                    trimGridToBed: false,
                 },
                 coordinateSystem: {
                     visible: true,
@@ -465,6 +478,8 @@ const defaultState: State = {
             showLineWarnings: false,
             showSoftLimitWarning: false,
             hideProcessedLines: false,
+            boundingBoxLabels: false,
+            followToolDuringRuntime: false,
             debug: {
                 profileWorker: false,
                 profileSampleEvery: 10000,
@@ -472,6 +487,13 @@ const defaultState: State = {
         },
     },
     commandKeys: {},
+    // Must stay an empty object: store/index.ts's merge() only walks base's own
+    // keys, so a saved key absent from defaultState gets silently dropped on
+    // every reload UNLESS its defaultState value is `{}` (merge() then returns
+    // the saved value wholesale). Plugin ids are dynamic/unbounded, so this can
+    // never have real per-plugin defaults added to it — see `commandKeys: {}`
+    // above for the same pattern with dynamic macro-id keys.
+    plugins: {},
 };
 
 export default defaultState;

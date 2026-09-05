@@ -1,26 +1,24 @@
-import { connect } from 'react-redux';
-import get from 'lodash/get';
-import { FaShower } from 'react-icons/fa6';
-import { FaWater } from 'react-icons/fa';
-import { FaBan } from 'react-icons/fa6';
-
-import {
-    startMist,
-    startFlood,
-    stopCoolant,
-} from 'app/features/Coolant/utils/actions';
+import { usePostHog } from '@posthog/react';
+import { ActiveStateButton } from 'app/components/ActiveStateButton';
 import {
     GRBL,
     GRBL_ACTIVE_STATE_IDLE,
     GRBLHAL,
     WORKFLOW_STATE_RUNNING,
 } from 'app/constants';
-import { ActiveStateButton } from 'app/components/ActiveStateButton';
+import {
+    startFlood,
+    startMist,
+    stopCoolant,
+} from 'app/features/Coolant/utils/actions';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
 import ensureArray from 'ensure-array';
+import get from 'lodash/get';
 import includes from 'lodash/includes';
 import { useCallback } from 'react';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
-import { usePostHog } from 'posthog-js/react';
+import { FaWater } from 'react-icons/fa';
+import { FaBan, FaShower } from 'react-icons/fa6';
+import { connect } from 'react-redux';
 
 export interface CoolantProps {
     mistActive: boolean;
@@ -36,8 +34,6 @@ export function Coolant({ mistActive, floodActive }: CoolantProps) {
             controllerType: state.controller.type ?? 'grbl',
         }));
 
-    const posthog = usePostHog();
-
     const canClick = useCallback((): boolean => {
         if (!isConnected) return false;
         if (workflow.state === WORKFLOW_STATE_RUNNING) return false;
@@ -52,6 +48,8 @@ export function Coolant({ mistActive, floodActive }: CoolantProps) {
         controllerState?.status?.activeState,
     ]);
 
+    const posthog = usePostHog();
+
     return (
         <div className="flex flex-col justify-around items-center h-full">
             <div className="flex flex-row justify-center w-full gap-2">
@@ -60,7 +58,7 @@ export function Coolant({ mistActive, floodActive }: CoolantProps) {
                     icon={<FaShower />}
                     onClick={() => {
                         startMist();
-                        posthog.capture('coolant_mist_started');
+                        posthog?.capture('coolant_mist_started');
                     }}
                     className="h-16"
                     size="md"
@@ -73,7 +71,7 @@ export function Coolant({ mistActive, floodActive }: CoolantProps) {
                     icon={<FaWater />}
                     onClick={() => {
                         startFlood();
-                        posthog.capture('coolant_flood_started');
+                        posthog?.capture('coolant_flood_started');
                     }}
                     className="h-16"
                     size="md"
@@ -86,7 +84,7 @@ export function Coolant({ mistActive, floodActive }: CoolantProps) {
                     icon={<FaBan />}
                     onClick={() => {
                         stopCoolant();
-                        posthog.capture('coolant_off');
+                        posthog?.capture('coolant_off');
                     }}
                     className="h-16"
                     size="md"

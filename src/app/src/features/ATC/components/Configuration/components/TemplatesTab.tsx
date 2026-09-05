@@ -1,4 +1,26 @@
-import React, {
+import { Button } from 'app/components/Button';
+import GcodeViewer from 'app/components/GcodeViewer';
+import { Badge } from 'app/components/shadcn/Badge';
+import type {
+    ATCIMacroConfig,
+    Macro,
+} from 'app/features/ATC/assets/defaultATCIMacros.ts';
+import {
+    mapDefaultsToValues,
+    useConfigContext,
+} from 'app/features/ATC/components/Configuration/hooks/useConfigStore.tsx';
+import store from 'app/store';
+import cn from 'classnames';
+import {
+    AlertCircle,
+    AlertTriangle,
+    CheckCircle2,
+    CircleHelp,
+    FileText,
+    Upload,
+} from 'lucide-react';
+import type React from 'react';
+import {
     createContext,
     useContext,
     useEffect,
@@ -6,24 +28,6 @@ import React, {
     useRef,
     useState,
 } from 'react';
-import { Button } from 'app/components/Button';
-import { Badge } from 'app/components/shadcn/Badge';
-import {
-    Upload,
-    FileText,
-    AlertCircle,
-    CheckCircle2,
-    AlertTriangle,
-    CircleHelp,
-} from 'lucide-react';
-import cn from 'classnames';
-import { useConfigContext, mapDefaultsToValues } from 'app/features/ATC/components/Configuration/hooks/useConfigStore.tsx';
-import {
-    ATCIMacroConfig,
-    Macro,
-} from 'app/features/ATC/assets/defaultATCIMacros.ts';
-import GcodeViewer from 'app/components/GcodeViewer';
-import store from 'app/store';
 
 type TemplateUploadData = Pick<ATCIMacroConfig, 'version' | 'macros'> &
     Partial<ATCIMacroConfig>;
@@ -72,7 +76,9 @@ export function TemplateManagerProvider({
         if (!templates?.macros) {
             return [];
         }
-        return [...templates.macros].sort((a, b) => a.name.localeCompare(b.name));
+        return [...templates.macros].sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
     }, [templates]);
 
     useEffect(() => {
@@ -237,13 +243,13 @@ function TemplateManagerVersionInfo() {
     const syncStatusBadgeClass = cn(
         'h-6 min-w-[11rem] justify-center gap-1.5 border px-2.5 py-0 text-xs font-semibold shadow-sm',
         {
-            'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500 dark:text-white':
+            'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500 dark:text-content-primary':
                 versionSyncState === 'in_sync',
             'border-amber-500 bg-amber-500 text-black dark:border-amber-400 dark:bg-amber-400 dark:text-black':
                 versionSyncState === 'controller_outdated',
-            'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500 dark:text-white':
+            'border-sky-600 bg-sky-600 text-white dark:border-sky-500 dark:bg-sky-500 dark:text-content-primary':
                 versionSyncState === 'local_outdated',
-            'border-slate-600 bg-slate-600 text-white dark:border-slate-500 dark:bg-slate-500 dark:text-white':
+            'border-slate-600 bg-slate-600 text-white dark:border-slate-500 dark:bg-slate-500 dark:text-content-primary':
                 versionSyncState === 'unknown',
         },
     );
@@ -255,18 +261,21 @@ function TemplateManagerVersionInfo() {
               : AlertTriangle;
 
     return (
-        <div className="border border-border bg-white dark:border-slate-700 dark:bg-dark-darker px-4 py-3">
+        <div className="border border-border bg-white dark:border-outline dark:bg-surface-raised px-4 py-3">
             <div className="flex flex-wrap items-start gap-4">
                 <div className="flex items-center gap-2 min-w-[16rem]">
-                    <span className="text-sm font-semibold dark:text-white">
+                    <span className="text-sm font-semibold dark:text-content-primary">
                         Local Templates:
                     </span>
-                    <Badge variant="secondary" className={localVersionBadgeClass}>
+                    <Badge
+                        variant="secondary"
+                        className={localVersionBadgeClass}
+                    >
                         v{localTemplateVersion}
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2 min-w-[16rem]">
-                    <span className="text-sm font-semibold dark:text-white">
+                    <span className="text-sm font-semibold dark:text-content-primary">
                         Controller Templates:
                     </span>
                     <Badge
@@ -279,7 +288,7 @@ function TemplateManagerVersionInfo() {
                     </Badge>
                 </div>
                 <div className="flex items-center gap-2 min-w-[14rem]">
-                    <span className="text-sm font-semibold dark:text-white">
+                    <span className="text-sm font-semibold dark:text-content-primary">
                         Status:
                     </span>
                     <Badge variant="secondary" className={syncStatusBadgeClass}>
@@ -296,7 +305,7 @@ function TemplateManagerUploadSection() {
     const { handleUploadClick, uploadError } = useTemplateManagerContext();
 
     return (
-        <div className="border border-border bg-white dark:border-slate-700 dark:bg-dark-darker p-3">
+        <div className="border border-border bg-white dark:border-outline dark:bg-surface-raised p-3">
             <Button
                 onClick={handleUploadClick}
                 className="w-full flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white"
@@ -314,17 +323,13 @@ function TemplateManagerUploadSection() {
     );
 }
 
-function TemplateViewer({
-    className = '',
-}: {
-    className?: string;
-}) {
+function TemplateViewer({ className = '' }: { className?: string }) {
     const { selectedTemplate } = useTemplateManagerContext();
 
     return (
         <div
             className={cn(
-                'border border-border bg-white dark:border-slate-700 dark:bg-dark-darker flex flex-col min-h-0 overflow-hidden',
+                'border border-border bg-white dark:border-outline dark:bg-surface-raised flex flex-col min-h-0 overflow-hidden',
                 className,
             )}
         >
@@ -332,12 +337,12 @@ function TemplateViewer({
                 {selectedTemplate ? selectedTemplate.name : 'Content'}
             </h1>
             <div className="flex-1 min-h-0 p-2 overflow-hidden">
-                <div className="border rounded h-full min-h-0 overflow-hidden dark:border-slate-700 dark:bg-slate-900/50">
+                <div className="border rounded h-full min-h-0 overflow-hidden dark:border-outline dark:bg-surface-sunken">
                     {selectedTemplate ? (
                         <div className="h-full min-h-0 overflow-auto overscroll-contain p-2">
                             <GcodeViewer
                                 gcode={selectedTemplate.content}
-                                className="dark:text-white"
+                                className="dark:text-content-primary"
                             />
                         </div>
                     ) : (
@@ -362,15 +367,10 @@ export function TemplateManagerListContent({
         useTemplateManagerContext();
 
     return (
-        <div
-            className={cn(
-                'flex flex-col min-h-0 h-full gap-3',
-                className,
-            )}
-        >
+        <div className={cn('flex flex-col min-h-0 h-full gap-3', className)}>
             {showUploadButton && <TemplateManagerUploadSection />}
 
-            <div className="border border-border bg-white dark:border-slate-700 dark:bg-dark-darker flex flex-col min-h-0 flex-1 overflow-hidden">
+            <div className="border border-border bg-white dark:border-outline dark:bg-surface-raised flex flex-col min-h-0 flex-1 overflow-hidden">
                 <h1 className="text-sm font-semibold text-blue-500 p-2">
                     Macros ({sortedTemplates.length})
                 </h1>
@@ -380,13 +380,13 @@ export function TemplateManagerListContent({
                             key={template.name}
                             onClick={() => selectTemplate(template)}
                             className={cn(
-                                'w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-800 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2 transition-colors',
+                                'w-full text-left px-4 py-3 text-sm text-gray-800 dark:text-content-primary hover:bg-gray-50 dark:hover:bg-surface-hover border-b border-gray-100 dark:border-outline flex items-center gap-2 transition-colors',
                                 selectedTemplate?.name === template.name &&
                                     'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50',
                             )}
                         >
-                            <FileText className="h-4 w-4 text-gray-400 dark:text-gray-300" />
-                            <span className="font-medium dark:text-white">
+                            <FileText className="h-4 w-4 text-gray-400 dark:text-content-secondary" />
+                            <span className="font-medium dark:text-content-primary">
                                 {template.name}
                             </span>
                         </button>

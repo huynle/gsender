@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { VISUALIZER_PRIMARY } from '../../../constants';
-import { VisualizerState } from '../../definitions';
+import type { VisualizerState } from '../../definitions';
 
 const initialState: VisualizerState = {
     activeVisualizer: VISUALIZER_PRIMARY,

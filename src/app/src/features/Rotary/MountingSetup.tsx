@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-
+import { usePostHog } from '@posthog/react';
+import Button from 'app/components/Button';
 import {
     Dialog,
     DialogContent,
@@ -9,25 +9,23 @@ import {
     DialogTitle,
     DialogTrigger,
 } from 'app/components/shadcn/Dialog';
-import Button from 'app/components/Button';
 import { RadioGroup, RadioGroupItem } from 'app/components/shadcn/RadioGroup';
-import { toast } from 'app/lib/toaster';
-import { uploadGcodeFileToServer } from 'app/lib/fileupload';
 import {
     TOOLBAR_CATEGORY,
     VISUALIZER_PRIMARY,
     WORKSPACE_MODE,
 } from 'app/constants';
-import controller from 'app/lib/controller';
-
-import standardTrackGraphic from './assets/standard-track-top-view.png';
-import extensionTrackGraphic from './assets/extension-track-top-view.png';
-import customTrackGraphic from './assets/custom-boring-track-top-view.png';
-import { HOLE_TYPES } from './utils/mountingSetupMacros';
 import useShuttleEvents from 'app/hooks/useShuttleEvents';
+import controller from 'app/lib/controller';
+import { uploadGcodeFileToServer } from 'app/lib/fileupload';
+import { toast } from 'app/lib/toaster';
 import useKeybinding from 'app/lib/useKeybinding';
 import store from 'app/store';
-import { usePostHog } from 'posthog-js/react';
+import { useEffect, useState } from 'react';
+import customTrackGraphic from './assets/custom-boring-track-top-view.png';
+import extensionTrackGraphic from './assets/extension-track-top-view.png';
+import standardTrackGraphic from './assets/standard-track-top-view.png';
+import { HOLE_TYPES } from './utils/mountingSetupMacros';
 
 const MountingSetup = ({ isDisabled = false }: { isDisabled?: boolean }) => {
     const [open, setOpen] = useState(false);
@@ -189,7 +187,7 @@ const MountingSetup = ({ isDisabled = false }: { isDisabled?: boolean }) => {
 
         setOpen(false);
 
-        posthog.capture('rotary_mounting_setup_loaded', { setup: setupKey });
+        posthog?.capture('rotary_mounting_setup_loaded', { setup: setupKey });
     };
 
     const shuttleControlEvents = {

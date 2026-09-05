@@ -1,21 +1,19 @@
 import Button from 'app/components/Button';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
-
-import MountingSetup from './MountingSetup';
-import {
-    getZAxisProbing,
-    getYAxisAlignmentProbing,
-    runProbing,
-} from './utils/probeCommands';
 import {
     GRBL,
     GRBL_ACTIVE_STATE_IDLE,
     WORKFLOW_STATE_RUNNING,
     WORKSPACE_MODE,
 } from 'app/constants';
-import { useNavigate } from 'react-router';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
 import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
-import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib';
+import { useNavigate } from 'react-router';
+import MountingSetup from './MountingSetup';
+import {
+    getYAxisAlignmentProbing,
+    getZAxisProbing,
+    runProbing,
+} from './utils/probeCommands';
 
 const Actions = () => {
     const navigate = useNavigate();
@@ -53,17 +51,7 @@ const Actions = () => {
             <Button
                 size="sm"
                 variant="primary"
-                onClick={() => {
-                    Confirm({
-                        title: 'Rotary Z-Axis probing',
-                        content:
-                            "Click 'Run' to start the Rotary Z-Axis probing cycle",
-                        confirmLabel: 'Run',
-                        onConfirm: () => {
-                            runProbing('Rotary Z-Axis', getZAxisProbing());
-                        },
-                    });
-                }}
+                onClick={() => runProbing('Rotary Z-Axis', getZAxisProbing())}
                 disabled={
                     !isConnected ||
                     (firmwareType === GRBL && !isInRotaryMode) ||
@@ -80,20 +68,9 @@ const Actions = () => {
             <Button
                 size="sm"
                 variant="primary"
-                onClick={() => {
-                    Confirm({
-                        title: 'Rotary Y-Axis alignment',
-                        content:
-                            "Click 'Run' to start the Rotary Y-Axis alignment cycle",
-                        confirmLabel: 'Run',
-                        onConfirm: () => {
-                            runProbing(
-                                'Y-Axis Alignment',
-                                getYAxisAlignmentProbing(),
-                            );
-                        },
-                    });
-                }}
+                onClick={() =>
+                    runProbing('Y-Axis Alignment', getYAxisAlignmentProbing())
+                }
                 disabled={
                     !isConnected ||
                     isInRotaryMode ||

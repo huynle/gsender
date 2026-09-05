@@ -1,3 +1,4 @@
+import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib';
 import controller from 'app/lib/controller';
 import { toast } from 'app/lib/toaster';
 import { getUnitModal } from 'app/lib/toolChangeUtils';
@@ -132,10 +133,17 @@ export const getYAxisAlignmentProbing = () => {
 };
 
 export const runProbing = (name = 'rotary', commands: string) => {
-    toast.info(`Running ${name} probing commands`, {
-        position: 'bottom-right',
-    });
-    const unitModal = getUnitModal();
+    Confirm({
+        title: `${name} probing`,
+        content: `Click 'Run' to start the ${name} probing cycle`,
+        confirmLabel: `Run`,
+        onConfirm: () => {
+            toast.info(`Running ${name} probing commands`, {
+                position: 'bottom-right',
+            });
+            const unitModal = getUnitModal();
 
-    controller.command('gcode:safe', commands, unitModal);
+            controller.command('gcode:safe', commands, unitModal);
+        },
+    });
 };

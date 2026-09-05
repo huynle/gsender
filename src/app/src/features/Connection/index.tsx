@@ -1,27 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
-import cn from 'classnames';
-import { connect } from 'react-redux';
-import get from 'lodash/get';
 import { usePostHog } from '@posthog/react';
-
-import controller from 'app/lib/controller';
-import store from 'app/store';
-import { GRBL } from 'app/constants';
-import { isIPv4 } from 'app/lib/utils';
-
-import { ConnectionStateIndicator } from './components/ConnectionStateIndicator';
-import { ConnectionInfo } from './components/ConnectionInfo';
-import { refreshPorts, refreshPortsOnParentEntry } from './utils/connection';
-import { PortListings } from './components/PortListings';
-import { DisconnectButton } from './components/DisconnectButton';
-import { Port } from './definitions';
-import WidgetConfig from '../WidgetConfig/WidgetConfig';
-import pubsub from 'pubsub-js';
 import {
     Popover,
-    PopoverTrigger,
     PopoverContent,
+    PopoverTrigger,
 } from 'app/components/shadcn/Popover';
+import { GRBL } from 'app/constants';
+import controller from 'app/lib/controller';
+import { isIPv4 } from 'app/lib/utils';
+import store from 'app/store';
+import cn from 'classnames';
+import get from 'lodash/get';
+import pubsub from 'pubsub-js';
+import { useEffect, useRef, useState } from 'react';
+import { connect } from 'react-redux';
+import WidgetConfig from '../WidgetConfig/WidgetConfig';
+import { ConnectionInfo } from './components/ConnectionInfo';
+import { ConnectionStateIndicator } from './components/ConnectionStateIndicator';
+import { DisconnectButton } from './components/DisconnectButton';
+import { PortListings } from './components/PortListings';
+import type { Port } from './definitions';
+import { refreshPorts, refreshPortsOnParentEntry } from './utils/connection';
 
 export enum ConnectionState {
     DISCONNECTED,
@@ -83,6 +81,24 @@ function Connection(props: ConnectionProps) {
             onControllerDisconnect();
         });
 
+        // A remote/browser client can be auto-joined to an already-open
+        // connection server-side (see lib/controller.ts's "startup" handler)
+        // without ever going through handleConnect(). Sync the local widget
+        // state so the header button reflects "Connected" in that case too.
+        controller.addListener('serialport:openController', () => {
+            setConnectionState((prevState) => {
+                if (prevState === ConnectionState.CONNECTED) {
+                    return prevState;
+                }
+                const port = controller.port;
+                setActivePort(port);
+                setConnectionType(
+                    isIPv4(port) ? ConnectionType.ETHERNET : ConnectionType.USB,
+                );
+                return ConnectionState.CONNECTED;
+            });
+        });
+
         const preferredFirmware = store.get(
             'widgets.connection.controller.type',
             'grbl',
@@ -116,7 +132,7 @@ function Connection(props: ConnectionProps) {
         const baud = Number(store.get('widgets.connection.baudrate'));
         const defaultFirmware = store.get('workspace.defaultFirmware', GRBL);
 
-        let ethernetPort = store.get('widgets.connection.ethernetPort', 23);
+        const ethernetPort = store.get('widgets.connection.ethernetPort', 23);
 
         // workflow - set element to connecting state, attempt to connect, and use callback to update state on end
         setConnectionState(ConnectionState.CONNECTING);
@@ -300,7 +316,7 @@ function Connection(props: ConnectionProps) {
                 )}
                 <PopoverTrigger asChild>
                     <button
-                        className="h-12 max-xl:h-10 relative border border-gray-400 bg-gray-100 font-bold px-4 py-2 max-sm:p-1 ring-1 ring-gray-900/5 gap-4 justify-between items-center rounded-lg leading-none flex flex-row items-top portrait:min-w-[170px] portrait:max-sm:min-w-max min-w-[250px] max-xl:min-w-[180px] max-sm:min-w-0 dark:bg-dark text-black dark:text-white cursor-pointer"
+                        className="h-12 max-xl:h-10 relative border border-gray-400 bg-gray-100 font-bold px-4 py-2 max-sm:p-1 ring-1 ring-gray-900/5 gap-4 justify-between items-center rounded-lg leading-none flex flex-row items-top portrait:min-w-[170px] portrait:max-sm:min-w-max min-w-[250px] max-xl:min-w-[180px] max-sm:min-w-0 dark:bg-surface-raised text-black dark:text-content-primary cursor-pointer"
                         onClick={handleClick}
                     >
                         <ConnectionStateIndicator

@@ -1,14 +1,14 @@
-import { SPINDLE_LASER } from '../../constants';
-
-export type SendM5Type = {
-    type?: 'spindle' | 'laser';
-    ignorePosthog?: boolean;
-};
+import type { SPINDLE_LASER } from '../../constants';
 
 // Types
 
 export type SPINDLE_LASER_T =
     (typeof SPINDLE_LASER)[keyof typeof SPINDLE_LASER];
+
+export type SendM5Type = {
+    type?: 'spindle' | 'laser';
+    ignorePosthog?: boolean;
+};
 
 // Interfaces
 
@@ -30,11 +30,11 @@ export interface Spindle {
     capabilities: string;
     laser: boolean;
     raw: string;
-    order: number
+    order: number;
 }
 
 export interface LaserState {
-    laserOnOutline: boolean,
+    laserOnOutline: boolean;
     power: number;
     duration: number;
     xOffset: number;

@@ -1,14 +1,16 @@
-import reduxStore from 'app/store/redux';
-import prefStore from 'app/store';
-
-import get from 'lodash/get';
 import { toast } from 'app/lib/toaster';
+import prefStore from 'app/store';
+import reduxStore from 'app/store/redux';
+import get from 'lodash/get';
 
 export const FRONT_RIGHT = 'FR';
 export const FRONT_LEFT = 'FL';
 export const BACK_RIGHT = 'BR';
 export const BACK_LEFT = 'BL';
+export const CENTER = 'CT';
 export const OTHER = 'OT';
+export const POSITIVE_DIRECTION = 1;
+export const NEGATIVE_DIRECTION = -1;
 
 const OFFSET_DISTANCE = 1;
 
@@ -42,6 +44,71 @@ const getMachineMovementLimits = (pullOff: number): number[] => {
     return [Number(xLimit), Number(yLimit)];
 };
 
+// Direction (in machine space) from the home corner toward the opposite
+// corner, per axis. Mirrors src/server/lib/homing.js's getAxisMaximumLocation.
+export const getAxisMaximumLocation = (
+    homingMask: string,
+): [number, number] => {
+    const homingLocation = getHomingLocation(homingMask);
+    if (homingLocation === BACK_RIGHT) {
+        return [NEGATIVE_DIRECTION, NEGATIVE_DIRECTION];
+    } else if (homingLocation === BACK_LEFT) {
+        return [POSITIVE_DIRECTION, NEGATIVE_DIRECTION];
+    } else if (homingLocation === FRONT_RIGHT) {
+        return [NEGATIVE_DIRECTION, POSITIVE_DIRECTION];
+    }
+    return [POSITIVE_DIRECTION, POSITIVE_DIRECTION];
+};
+
+// Machine bed rectangle in work-coordinate scene space (mm), matching how
+// wpos is already work-relative with no extra offset math in the renderer.
+export function computeMachineBedWorkRect(args: {
+    homingMaskSetting: string;
+    machineWidthMm: number;
+    machineDepthMm: number;
+    wcsOffset: { x: number; y: number };
+}): { min: { x: number; y: number }; max: { x: number; y: number } } {
+    const [signX, signY] = getAxisMaximumLocation(args.homingMaskSetting);
+    const cornerX = signX * args.machineWidthMm;
+    const cornerY = signY * args.machineDepthMm;
+    const machineMinX = Math.min(0, cornerX);
+    const machineMaxX = Math.max(0, cornerX);
+    const machineMinY = Math.min(0, cornerY);
+    const machineMaxY = Math.max(0, cornerY);
+    return {
+        min: {
+            x: machineMinX - args.wcsOffset.x,
+            y: machineMinY - args.wcsOffset.y,
+        },
+        max: {
+            x: machineMaxX - args.wcsOffset.x,
+            y: machineMaxY - args.wcsOffset.y,
+        },
+    };
+}
+
+// ATC keepout rectangle in work-coordinate scene space (mm). Unlike the
+// machine bed rect, $684-$687 are already literal machine-coordinate min/max
+// positions (not homing-corner-relative), so no direction sign flip is needed.
+export function computeKeepoutWorkRect(args: {
+    xMin: number;
+    xMax: number;
+    yMin: number;
+    yMax: number;
+    wcsOffset: { x: number; y: number };
+}): { min: { x: number; y: number }; max: { x: number; y: number } } {
+    return {
+        min: {
+            x: args.xMin - args.wcsOffset.x,
+            y: args.yMin - args.wcsOffset.y,
+        },
+        max: {
+            x: args.xMax - args.wcsOffset.x,
+            y: args.yMax - args.wcsOffset.y,
+        },
+    };
+}
+
 // Get a single bit from integer at position.  It does not use 0 indexing so pretend that arrays start at 1 :)
 export function isBitSetInNumber(value: string, bitPosition: number) {
     const number = Number(value);
@@ -64,9 +131,23 @@ const getPositionMovements = (
     if (!xLimit || !yLimit) {
         toast.error(
             "Unable to find machine limits - make sure they're set in preferences",
-            { position: 'bottom-right' }
+            { position: 'bottom-right' },
         );
         return [null, null];
+    }
+
+    if (requestedPosition === CENTER) {
+        // Center is halfway between the home corner and the far corner, using
+        // the same per-corner sign convention as getAxisMaximumLocation.
+        if (homingPosition === FRONT_RIGHT) {
+            return [(xLimit * -1) / 2, yLimit / 2];
+        } else if (homingPosition === FRONT_LEFT) {
+            return [xLimit / 2, yLimit / 2];
+        } else if (homingPosition === BACK_LEFT) {
+            return [xLimit / 2, (yLimit * -1) / 2];
+        }
+        // Back Right
+        return [(xLimit * -1) / 2, (yLimit * -1) / 2];
     }
 
     if (homingPosition === FRONT_RIGHT) {
@@ -152,7 +233,7 @@ export const getMovementGCode = (
     if (xMovement === null || yMovement === null) {
         toast.error(
             'Unable to calculate position movements based on inputs - check arguments passed',
-            { position: 'bottom-right' }
+            { position: 'bottom-right' },
         );
         return [];
     }

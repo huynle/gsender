@@ -1,7 +1,4 @@
-import { useState, forwardRef } from 'react';
-import cn from 'classnames';
-import { FaEllipsisH, FaEdit, FaTrashAlt } from 'react-icons/fa';
-
+import Button from 'app/components/Button';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -10,8 +7,10 @@ import {
 } from 'app/components/shadcn/Dropdown';
 import Tooltip from 'app/components/Tooltip';
 import { toast } from 'app/lib/toaster';
-import Button from 'app/components/Button';
+import cn from 'classnames';
 import cx from 'classnames';
+import { forwardRef, useState } from 'react';
+import { FaEdit, FaEllipsisH, FaTrashAlt } from 'react-icons/fa';
 
 type Macro = {
     id: string;
@@ -88,11 +87,10 @@ const MacroItem = ({
     const content = (
         <div
             className={cx(
-                'flex items-center justify-between rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 p-1 border dark:text-white dark:bg-dark',
+                'flex items-center justify-between rounded-md shadow-sm hover:shadow-md transition-shadow duration-200 p-1 border dark:text-content-primary dark:bg-surface-raised',
                 {
                     'bg-gray-300 border-gray-400 cursor-not-allowed': disabled,
-                    'bg-white border-gray-200 dark:border-dark-lighter':
-                        !disabled,
+                    'bg-white border-gray-200 dark:border-outline': !disabled,
                 },
             )}
         >
@@ -103,7 +101,7 @@ const MacroItem = ({
             />
 
             <DropdownMenu>
-                <DropdownMenuTrigger 
+                <DropdownMenuTrigger
                     className="flex items-center justify-center w-10 h-8 cursor-pointer hover:bg-gray-200 rounded dark:hover:bg-dark-lighter"
                     aria-label={`Options for macro ${macro.name}`}
                 >

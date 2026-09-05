@@ -1,24 +1,24 @@
+import { usePostHog } from '@posthog/react';
+import { Button } from 'app/components/Button';
 import {
-    Axis,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from 'app/components/shadcn/AlertDialog';
+import { WCSInput } from 'app/features/DRO/component/WCSInput.tsx';
+import {
+    type Axis,
     handleManualOffset,
     homeAxis,
 } from 'app/features/DRO/utils/DRO.ts';
-import { Button } from 'app/components/Button';
-import { zeroWCS, gotoZero } from '../utils/DRO.ts';
-import { WCSInput } from 'app/features/DRO/component/WCSInput.tsx';
 import { useWorkspaceState } from 'app/hooks/useWorkspaceState.ts';
-import {
-    AlertDialog,
-    AlertDialogTrigger,
-    AlertDialogContent,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogCancel,
-    AlertDialogAction,
-} from 'app/components/shadcn/AlertDialog';
-import { usePostHog } from '@posthog/react';
+import { gotoZero, zeroWCS } from '../utils/DRO.ts';
 
 interface AxisRowProps {
     label: string;
@@ -45,7 +45,7 @@ export function AxisRow({
     const posthog = usePostHog();
 
     return (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-md w-full flex flex-row items-stretch justify-between flex-1 max-xl:scale-95">
+        <div className="border border-gray-200 dark:border-outline rounded-md w-full flex flex-row items-stretch justify-between flex-1 max-xl:scale-95">
             {homingMode || !shouldWarnZero ? (
                 <Button
                     onClick={() => {

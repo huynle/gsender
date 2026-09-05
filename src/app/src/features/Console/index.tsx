@@ -1,16 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-
 import { toast } from 'app/lib/toaster';
+import { useEffect, useRef, useState } from 'react';
 
 import Terminal from './Terminal';
 import TerminalInput from './TerminalInput';
 
 import './styles.css';
+import { usePostHog } from '@posthog/react';
+import type { FIRMWARE_TYPES_T } from 'app/definitions/firmware';
 import { ConsolePopout } from 'app/features/Console/components/ConsolePopout.tsx';
-import isElectron from 'is-electron';
 import controller from 'app/lib/controller';
-import { FIRMWARE_TYPES_T } from 'app/definitions/firmware';
-import { usePostHog } from 'posthog-js/react';
+import isElectron from 'is-electron';
 
 type ConsoleProps = {
     isActive: boolean;
@@ -48,7 +47,7 @@ const Console = ({ isActive, isChildWindow }: ConsoleProps) => {
 
             toast.info('Console cleared', { position: 'bottom-right' });
 
-            posthog.capture('console_cleared');
+            posthog?.capture('console_cleared');
         }
     };
 
@@ -128,7 +127,7 @@ const Console = ({ isActive, isChildWindow }: ConsoleProps) => {
     return (
         <>
             <div
-                className={`absolute top-0 left-0 rounded-lg w-full h-full bg-gray-50 z-10 transition-opacity dark:text-white dark:bg-dark
+                className={`absolute top-0 left-0 rounded-lg w-full h-full bg-gray-50 z-10 transition-opacity dark:text-content-primary dark:bg-surface-raised
                     duration-300 ${port !== '' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
             >
                 <div className="flex justify-center items-center h-full ">

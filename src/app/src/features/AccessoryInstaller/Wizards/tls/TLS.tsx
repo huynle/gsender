@@ -1,5 +1,4 @@
-import { Wizard } from 'app/features/AccessoryInstaller/types';
-import { useValidations } from 'app/features/AccessoryInstaller/hooks/UseValidations.tsx';
+import { useValidations } from 'src/components/Wizard/hooks/UseValidations.tsx';
 import { useMemo } from 'react';
 import { TLSOptions } from 'app/features/AccessoryInstaller/Wizards/tls/components/TLSOptions.tsx';
 import { TLSLocation } from 'app/features/AccessoryInstaller/Wizards/tls/components/TLSLocation.tsx';
@@ -14,6 +13,7 @@ import store from 'app/store';
 import TLS_STEP_ONE from './assets/TLS_Step_01.png';
 import TLS_STEP_TWO from './assets/TLS_Step_02.png';
 import TLS_STEP_THREE from './assets/TLS_Step_03_Pin.png';
+import { Wizard } from 'app/components/Wizard/types';
 
 const HELP_URL = 'https://resources.sienci.com/view/addons-tls/';
 
@@ -29,7 +29,8 @@ function JoggingSpacer() {
 }
 
 export function useSienciTLSWizard(): Wizard {
-    const { connectionValidation, homingValidation, grblHAlValidator } = useValidations();
+    const { connectionValidation, homingValidation, grblHAlValidator } =
+        useValidations();
 
     const validations = useMemo(
         () => [connectionValidation, grblHAlValidator, homingValidation],
@@ -60,7 +61,7 @@ export function useSienciTLSWizard(): Wizard {
                             secondaryContent: [
                                 {
                                     type: 'image',
-                                    content: TLS_STEP_ONE
+                                    content: TLS_STEP_ONE,
                                 },
                                 {
                                     type: 'component',
@@ -81,7 +82,7 @@ export function useSienciTLSWizard(): Wizard {
                             secondaryContent: [
                                 {
                                     type: 'image',
-                                    content: TLS_STEP_TWO
+                                    content: TLS_STEP_TWO,
                                 },
                                 {
                                     type: 'component',
@@ -110,7 +111,7 @@ export function useSienciTLSWizard(): Wizard {
                             secondaryContent: [
                                 {
                                     type: 'image',
-                                    content: TLS_STEP_THREE
+                                    content: TLS_STEP_THREE,
                                 },
                                 {
                                     type: 'component',

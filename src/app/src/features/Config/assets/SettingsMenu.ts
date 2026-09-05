@@ -1,39 +1,6 @@
-import { BsEthernet } from 'react-icons/bs';
-import { FaCog } from 'react-icons/fa';
-import { PiEngine } from 'react-icons/pi';
-import { MdTouchApp } from 'react-icons/md';
-import { CiLight } from 'react-icons/ci';
-import { FaHome } from 'react-icons/fa';
-import { GiTargetLaser } from 'react-icons/gi';
-import { FaRobot } from 'react-icons/fa';
-import { RxButton } from 'react-icons/rx';
-import { CiMapPin } from 'react-icons/ci';
-import { IoIosSwap } from 'react-icons/io';
-import { FaArrowsSpin } from 'react-icons/fa6';
-import { MdSettingsApplications } from 'react-icons/md';
-import { SiCoronaengine } from 'react-icons/si';
-import { MdOutlineReadMore, MdAccessibility } from 'react-icons/md';
-import { IconType } from 'react-icons';
-import {
-    TOUCHPLATE_TYPE_3D,
-    TOUCHPLATE_TYPE_3D_ADVANCED,
-    TOUCHPLATE_TYPE_AUTOZERO,
-    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
-    TOUCHPLATE_TYPE_BITZERO,
-    TOUCHPLATE_TYPE_STANDARD,
-    TOUCHPLATE_TYPE_ZERO,
-    isAutoZeroFamily,
-    is3DFamily,
-} from 'app/lib/constants';
-import { AJogWizard } from 'app/features/Config/components/wizards/AJogWizard.tsx';
-import { ProbePinStatus } from 'app/features/Config/components/wizards/ProbePinStatus.tsx';
-import { LimitSwitchIndicators } from 'app/features/Config/components/wizards/LimitSwitchIndicators.tsx';
-import { SpindleWizard } from 'app/features/Config/components/wizards/SpindleWizard.tsx';
-import { AccessoryOutputWizard } from 'app/features/Config/components/wizards/AccessoryOutputWizard.tsx';
-import { SquaringToolWizard } from 'app/features/Config/components/wizards/SquaringToolWizard.tsx';
-import { XJogWizard } from 'app/features/Config/components/wizards/XJogWizard.tsx';
-import { YJogWizard } from 'app/features/Config/components/wizards/YJogWizard.tsx';
-import { ZJogWizard } from 'app/features/Config/components/wizards/ZJogWizard.tsx';
+/** biome-ignore-all lint/suspicious/noExplicitAny: <> */
+import api from 'app/api';
+import { Confirm } from 'app/components/ConfirmationDialog/ConfirmationDialogLib.ts';
 import {
     GRBL,
     GRBLHAL,
@@ -45,38 +12,79 @@ import {
     THEMES,
     WORKSPACE_MODE,
 } from 'app/constants';
-import { LaserWizard } from 'app/features/Config/components/wizards/LaserWizard.tsx';
+import type { EEPROM, FIRMWARE_TYPES_T } from 'app/definitions/firmware';
+import type {
+    BasicPosition,
+    UNITS_EN,
+    UNITS_GCODE,
+} from 'app/definitions/general';
 import {
     GamepadLinkWizard,
     KeyboardLinkWizard,
 } from 'app/features/Config/components/ShortcutLinkWizards.tsx';
-import controller from 'app/lib/controller.ts';
-import get from 'lodash/get';
-import store from 'app/store';
-import reduxStore from 'app/store/redux';
-import pubsub from 'pubsub-js';
-import { EEPROM, FIRMWARE_TYPES_T } from 'app/definitions/firmware';
-import { updatePartialControllerSettings } from 'app/store/redux/slices/controller.slice';
-import findIndex from 'lodash/findIndex';
-import { BasicPosition, UNITS_EN, UNITS_GCODE } from 'app/definitions/general';
-import { convertToImperial } from 'app/lib/units';
-import { round, roundMetric } from 'app/lib/rounding';
-import {
+import { AccessoryOutputWizard } from 'app/features/Config/components/wizards/AccessoryOutputWizard.tsx';
+import { AJogWizard } from 'app/features/Config/components/wizards/AJogWizard.tsx';
+import { LaserWizard } from 'app/features/Config/components/wizards/LaserWizard.tsx';
+import { LimitSwitchIndicators } from 'app/features/Config/components/wizards/LimitSwitchIndicators.tsx';
+import { ProbePinStatus } from 'app/features/Config/components/wizards/ProbePinStatus.tsx';
+import { SpindleWizard } from 'app/features/Config/components/wizards/SpindleWizard.tsx';
+import { SquaringToolWizard } from 'app/features/Config/components/wizards/SquaringToolWizard.tsx';
+import { XJogWizard } from 'app/features/Config/components/wizards/XJogWizard.tsx';
+import { YJogWizard } from 'app/features/Config/components/wizards/YJogWizard.tsx';
+import { ZJogWizard } from 'app/features/Config/components/wizards/ZJogWizard.tsx';
+import { updateToolchangeContext } from 'app/features/Helper/Wizard.tsx';
+import type {
     LaserState,
-    Spindle,
     SPINDLE_LASER_T,
+    Spindle,
 } from 'app/features/Spindle/definitions';
+import type { THEMES_T } from 'app/features/Visualizer/definitions';
+import {
+    is3DFamily,
+    isAutoZeroFamily,
+    TOUCHPLATE_TYPE_3D,
+    TOUCHPLATE_TYPE_3D_ADVANCED,
+    TOUCHPLATE_TYPE_AUTOZERO,
+    TOUCHPLATE_TYPE_AUTOZERO_ADVANCED,
+    TOUCHPLATE_TYPE_BITZERO,
+    TOUCHPLATE_TYPE_STANDARD,
+    TOUCHPLATE_TYPE_ZERO,
+} from 'app/lib/constants';
+import controller from 'app/lib/controller.ts';
 import { updateWorkspaceMode } from 'app/lib/rotary';
+import { round, roundMetric } from 'app/lib/rounding';
+import { toast } from 'app/lib/toaster';
 import {
     TOASTER_DISABLED,
     TOASTER_LONG,
     TOASTER_UNTIL_CLOSE,
 } from 'app/lib/toaster/ToasterLib';
+import { convertToImperial } from 'app/lib/units';
+import store from 'app/store';
+import reduxStore from 'app/store/redux';
+import { updatePartialControllerSettings } from 'app/store/redux/slices/controller.slice';
 import isElectron from 'is-electron';
-import { THEMES_T } from 'app/features/Visualizer/definitions';
-import { JSX } from 'react';
+import findIndex from 'lodash/findIndex';
+import get from 'lodash/get';
 import posthog from 'posthog-js';
-import {updateToolchangeContext} from "app/features/Helper/Wizard.tsx";
+import pubsub from 'pubsub-js';
+import type { JSX } from 'react';
+import type { IconType } from 'react-icons';
+import { BsEthernet } from 'react-icons/bs';
+import { CiLight, CiMapPin } from 'react-icons/ci';
+import { FaCog, FaHome, FaRobot } from 'react-icons/fa';
+import { FaArrowsSpin } from 'react-icons/fa6';
+import { GiTargetLaser } from 'react-icons/gi';
+import { IoIosSwap } from 'react-icons/io';
+import {
+    MdAccessibility,
+    MdOutlineReadMore,
+    MdSettingsApplications,
+    MdTouchApp,
+} from 'react-icons/md';
+import { PiEngine } from 'react-icons/pi';
+import { RxButton } from 'react-icons/rx';
+import { SiCoronaengine } from 'react-icons/si';
 
 export interface SettingsMenuSection {
     label: string;
@@ -101,7 +109,8 @@ export type gSenderSettingType =
     | 'api'
     | 'jog'
     | 'location'
-    | 'wizard';
+    | 'wizard'
+    | 'path';
 
 export type gSenderSettingsValues = number | string | boolean;
 
@@ -109,7 +118,7 @@ export interface gSenderSetting {
     label?: string;
     type: gSenderSettingType;
     key?: string;
-    description?: string | any[];
+    description?: string;
     options?: string[] | number[];
     unit?: string;
     eID?: EEPROM;
@@ -264,7 +273,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         description: 'Allow screen to blank/sleep.',
                         onEnable: () => {
                             if (isElectron()) {
-                                window.ipcRenderer.send(
+                                (window as any).ipcRenderer.send(
                                     'change-power-saving',
                                     true,
                                 );
@@ -272,7 +281,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         },
                         onDisable: () => {
                             if (isElectron()) {
-                                window.ipcRenderer.send(
+                                (window as any).ipcRenderer.send(
                                     'change-power-saving',
                                     false,
                                 );
@@ -287,7 +296,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             'Pop up a confirmation window when exiting the program.',
                         onEnable: () => {
                             if (isElectron()) {
-                                window.ipcRenderer.send(
+                                (window as any).ipcRenderer.send(
                                     'assignPromptExit',
                                     true,
                                 );
@@ -295,7 +304,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         },
                         onDisable: () => {
                             if (isElectron()) {
-                                window.ipcRenderer.send(
+                                (window as any).ipcRenderer.send(
                                     'assignPromptExit',
                                     false,
                                 );
@@ -309,6 +318,59 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         description:
                             'Choose how often gSender will backup your settings. Useful in case you need to revert them in the future.',
                         options: ['On Update', 'Daily', 'Weekly', 'Monthly'],
+                        hidden: () => {
+                            return !isElectron();
+                        },
+                    },
+                    {
+                        label: 'Settings backup location',
+                        key: 'workspace.backupLoc',
+                        type: 'path',
+                        description:
+                            "Choose the location to backup your settings to. Default: your OS's appData location.",
+                        hidden: () => {
+                            return !isElectron();
+                        },
+                    },
+                    {
+                        label: 'Imported plugins location',
+                        key: 'workspace.userPluginsDir',
+                        type: 'path',
+                        description:
+                            "Choose the location to import your plugins to. Default: your OS's userData location.",
+                        onApply: () => {
+                            const value = store.get(
+                                'workspace.userPluginsDir',
+                                '',
+                            );
+                            api.plugins
+                                .updateSettings(value)
+                                .then((res) => {
+                                    store.set(
+                                        'workspace.userPluginsDir',
+                                        res.data.userPluginsDir,
+                                    );
+                                    const { previousUserPluginsDir } = res.data;
+                                    const abandonedPreviousDir =
+                                        previousUserPluginsDir &&
+                                        previousUserPluginsDir !==
+                                            res.data.userPluginsDir;
+                                    const message = abandonedPreviousDir
+                                        ? `Restart gSender to load plugins from the new location. Plugins in "${previousUserPluginsDir}" will no longer be scanned until you set this back.`
+                                        : 'Restart gSender to load plugins from the new location.';
+                                    toast.info(message, {
+                                        duration: TOASTER_LONG,
+                                    });
+                                })
+                                .catch(() => {
+                                    toast.error(
+                                        'Failed to update the plugins location. Please try again.',
+                                    );
+                                });
+                        },
+                        hidden: () => {
+                            return !isElectron();
+                        },
                     },
                     {
                         label: 'Collect usage data',
@@ -316,12 +378,17 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         description:
                             'This info is collected anonymously to help us improve gSender by seeing how people use it.',
                         type: 'boolean',
-                        valueTransform: (v: any) => v === 'accepted' || v === true,
+                        valueTransform: (v: any) =>
+                            v === 'accepted' || v === true,
                         onApply: () => {
-                            const toggle = store.get('workspace.collectUsageDataStatus');
+                            const toggle = store.get(
+                                'workspace.collectUsageDataStatus',
+                            );
                             store.replace(
                                 'workspace.collectUsageDataStatus',
-                                toggle === true || toggle === 'accepted' ? 'accepted' : 'denied',
+                                toggle === true || toggle === 'accepted'
+                                    ? 'accepted'
+                                    : 'denied',
                             );
 
                             if (toggle === true || toggle === 'accepted') {
@@ -347,14 +414,134 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         type: 'boolean',
                     },
                     {
+                        label: 'Use pendant view as default UI',
+                        key: 'workspace.usePendantViewAsDefault',
+                        description:
+                            'Launch directly into the touch-friendly pendant interface in fullscreen kiosk mode instead of the standard desktop UI. Requires an app restart to take effect.',
+                        type: 'boolean',
+                        onChange: (value: boolean) => {
+                            store.set(
+                                'workspace.usePendantViewAsDefault',
+                                value,
+                            );
+                            if (isElectron()) {
+                                Confirm({
+                                    title: 'Restart Required',
+                                    content: value
+                                        ? 'gSender needs to restart to switch to the pendant view.'
+                                        : 'gSender needs to restart to switch back to the desktop view.',
+                                    confirmLabel: 'Restart Now',
+                                    cancelLabel: 'Later',
+                                    onConfirm: () => {
+                                        (window as any).ipcRenderer.send(
+                                            'remoteMode-restart',
+                                        );
+                                    },
+                                });
+                            }
+                        },
+                    },
+                    {
+                        label: 'DRO zeros',
+                        key: 'workspace.customDecimalPlaces',
+                        description:
+                            'Set the number of decimal places shown between 1-4. (Default 0 shows 2 for mm and 3 for inches)',
+                        type: 'number',
+                        min: 0,
+                        max: 4,
+                    },
+                ],
+            },
+            {
+                label: 'Visualizer options',
+                settings: [
+                    {
                         label: 'Visualizer theme',
                         key: 'widgets.visualizer.theme',
                         description:
                             'Independent colour control for the visualizer.',
                         type: 'select',
-                        options: [THEMES.LIGHT_THEME, THEMES.DARK_THEME],
+                        options: [
+                            THEMES.LIGHT_THEME,
+                            THEMES.DARK_THEME,
+                            THEMES.FLEXOKI_DARK_THEME,
+                            THEMES.TOKYO_NIGHT_THEME,
+                            THEMES.GRUVBOX_LIGHT_THEME,
+                            THEMES.AYU_DARK_THEME,
+                            THEMES.AYU_LIGHT_THEME,
+                        ],
                         onChange: (theme: THEMES_T) => {
                             pubsub.publish('theme:change', theme);
+                        },
+                    },
+                    {
+                        label: 'Camera projection',
+                        key: 'widgets.visualizer.projection',
+                        description:
+                            'Perspective (default) shows depth like a normal camera view. Orthographic removes that depth distortion, keeping parallel lines parallel — useful for lining up toolpaths precisely.',
+                        type: 'select',
+                        options: ['Perspective', 'Orthographic'],
+                        onChange: (value: string) => {
+                            store.set('widgets.visualizer.projection', value);
+                            pubsub.publish('visualizer:settings');
+                        },
+                    },
+                    {
+                        label: 'Show bounding box',
+                        key: 'widgets.visualizer.objects.limits.visible',
+                        description:
+                            'Draw a wireframe around the extents of the loaded G-code file.',
+                        type: 'boolean',
+                        onChange: (value: boolean) => {
+                            store.set(
+                                'widgets.visualizer.objects.limits.visible',
+                                value,
+                            );
+                            pubsub.publish('visualizer:settings');
+                        },
+                    },
+                    {
+                        label: 'Show bounding box labels',
+                        key: 'widgets.visualizer.boundingBoxLabels',
+                        description:
+                            'Show X/Y/Z dimension labels on the bounding box.',
+                        type: 'boolean',
+                        onChange: (value: boolean) => {
+                            store.set(
+                                'widgets.visualizer.boundingBoxLabels',
+                                value,
+                            );
+                            pubsub.publish('visualizer:settings');
+                        },
+                    },
+                    {
+                        label: 'Show machine bed indicator',
+                        key: 'widgets.visualizer.objects.machineBed.visible',
+                        description:
+                            "Draw an outline of the machine's homed work area once homing is complete.",
+                        type: 'boolean',
+                        defaultValue: false,
+                        onChange: (value: boolean) => {
+                            store.set(
+                                'widgets.visualizer.objects.machineBed.visible',
+                                value,
+                            );
+                            pubsub.publish('visualizer:settings');
+                        },
+                    },
+                    {
+                        label: 'Trim grid to machine bed',
+                        key: 'widgets.visualizer.objects.machineBed.trimGridToBed',
+                        description:
+                            "When the machine bed indicator is shown, clip the background grid to just past the bed's edges instead of a fixed square.",
+                        type: 'boolean',
+                        defaultValue: false,
+                        onChange: (value: boolean) => {
+                            store.set(
+                                'widgets.visualizer.objects.machineBed.trimGridToBed',
+                                value,
+                            );
+                            pubsub.publish('visualizer:settings');
                         },
                     },
                     {
@@ -376,13 +563,12 @@ export const SettingsMenu: SettingsMenuSection[] = [
                         ],
                     },
                     {
-                        label: 'DRO zeros',
-                        key: 'workspace.customDecimalPlaces',
+                        label: 'Follow tool during runtime',
+                        key: 'widgets.visualizer.followToolDuringRuntime',
                         description:
-                            'Set the number of decimal places shown between 1-4. (Default 0 shows 2 for mm and 3 for inches)',
-                        type: 'number',
-                        min: 0,
-                        max: 4,
+                            'While a job is running, pan the camera to track the tool in X/Y, keeping the same viewing angle and height.',
+                        type: 'boolean',
+                        defaultValue: false,
                     },
                     {
                         label: 'Portrait macro bar',
@@ -1923,7 +2109,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                             'Send tool change lines as-is, assuming your CNC can properly handle M6 and T commands.',
                         onApply: () => {
                             updateToolchangeContext();
-                        }
+                        },
                     },
                     {
                         label: 'gSender strategy',
@@ -2420,7 +2606,7 @@ export const SettingsMenu: SettingsMenuSection[] = [
                                 // Normalize percentage to decimal (e.g., "100%" -> 1.0)
                                 const scaleFactor =
                                     parseFloat(scaleFactorStr) / 100;
-                                // @ts-ignore
+                                // @ts-expect-error
                                 window.ipcRenderer.send(
                                     'save-display-scale',
                                     scaleFactor,

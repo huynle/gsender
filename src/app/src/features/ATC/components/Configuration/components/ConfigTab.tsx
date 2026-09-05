@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { Button } from 'app/components/Button';
 import {
     Card,
     CardContent,
     CardHeader,
     CardTitle,
 } from 'app/components/shadcn/Card';
-import { Switch } from 'app/components/shadcn/Switch';
 import { Input } from 'app/components/shadcn/Input';
 import { Label } from 'app/components/shadcn/Label';
-import { Button } from 'app/components/Button';
-import { PositionInput } from './PositionInput';
+import { Spinner } from 'app/components/shadcn/Spinner';
+import { Switch } from 'app/components/shadcn/Switch';
+import OffsetManagementWidget from 'app/features/ATC/components/Configuration/components/OffsetManagement.tsx';
 import { useConfigContext } from 'app/features/ATC/components/Configuration/hooks/useConfigStore';
 import cn from 'classnames';
-import OffsetManagementWidget from 'app/features/ATC/components/Configuration/components/OffsetManagement.tsx';
-import { Spinner } from 'app/components/shadcn/Spinner';
 import {
     AlertTriangle,
     ArrowRight,
@@ -26,6 +23,10 @@ import {
     ShieldCheck,
     SlidersHorizontal,
 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { PositionInput } from './PositionInput';
 
 export interface ConfigTabProps {
     uploading: boolean;
@@ -33,7 +34,11 @@ export interface ConfigTabProps {
     macroReadFailed?: boolean;
 }
 
-export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }: ConfigTabProps) => {
+export const ConfigTab: React.FC = ({
+    uploading,
+    uploadError,
+    macroReadFailed,
+}: ConfigTabProps) => {
     const navigate = useNavigate();
     const {
         config,
@@ -44,8 +49,8 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
         status,
     } = useConfigContext();
 
-    const [forkSpacingStr, setForkSpacingStr] = useState<string>(
-        () => String(config.variables._tc_slot_offset.value),
+    const [forkSpacingStr, setForkSpacingStr] = useState<string>(() =>
+        String(config.variables._tc_slot_offset.value),
     );
 
     useEffect(() => {
@@ -53,11 +58,15 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
     }, [config.variables._tc_slot_offset.value]);
 
     const nonDefaultStyling = 'bg-yellow-50 dark:bg-yellow-900/20';
-    const labelClass = 'text-xs font-semibold text-gray-500 dark:text-white';
-    const subLabelClass = 'text-xs font-medium text-gray-500 dark:text-gray-300';
-    const rowLabelClass = 'text-xs font-medium text-gray-700 dark:text-white';
-    const helperTextClass = 'text-[10px] text-gray-400 dark:text-gray-300';
-    const iconClass = 'h-4 w-4 text-muted-foreground dark:text-white';
+    const labelClass =
+        'text-xs font-semibold text-gray-500 dark:text-content-primary';
+    const subLabelClass =
+        'text-xs font-medium text-gray-500 dark:text-content-secondary';
+    const rowLabelClass =
+        'text-xs font-medium text-gray-700 dark:text-content-primary';
+    const helperTextClass =
+        'text-[10px] text-gray-400 dark:text-content-secondary';
+    const iconClass = 'h-4 w-4 text-muted-foreground dark:text-content-primary';
     const rackSize = config.variables._tc_slots.value || 0;
     const rackEnabled = rackSize > 0;
 
@@ -78,8 +87,8 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
         <div className="space-y-4 flex flex-col h-full">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 {/* Tool Rack Section */}
-                <Card className="border border-border dark:border-slate-700 shadow-none w-full bg-white dark:bg-dark-darker">
-                    <CardHeader className="px-4 py-3 border-b border-border dark:border-slate-700 bg-muted/30 dark:bg-slate-800/60">
+                <Card className="border border-border dark:border-outline shadow-none w-full bg-white dark:bg-surface-raised">
+                    <CardHeader className="px-4 py-3 border-b border-border dark:border-outline bg-muted/30 dark:bg-surface-elevated">
                         <div className="flex items-center justify-between gap-2 w-full">
                             <CardTitle className="text-sm font-semibold text-foreground">
                                 Tool Rack
@@ -88,25 +97,30 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                         </div>
                     </CardHeader>
                     <CardContent className="p-5 !pt-4 min-h-[170px] flex flex-col justify-center gap-4">
-
                         <Button
                             variant="outline"
                             size="sm"
                             className="w-fit"
-                            onClick={() => navigate('/tools/accessoryInstall/sienci-atc/initial-setup')}
+                            onClick={() =>
+                                navigate(
+                                    '/tools/accessoryInstall/sienci-atc/initial-setup',
+                                )
+                            }
                         >
                             Go to ATC Setup
                             <ArrowRight className="h-4 w-4 ml-1" />
                         </Button>
-                        <p className="text-sm text-gray-600 dark:text-gray-200">
-                            Tool rack configuration is managed through the ATC setup process. Re-run setup to reconfigure your rack.
+                        <p className="text-sm text-gray-600 dark:text-content-secondary">
+                            Tool rack configuration is managed through the ATC
+                            setup process. Re-run setup to reconfigure your
+                            rack.
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* Tool Length Sensor Section */}
-                <Card className="border border-border dark:border-slate-700 shadow-none w-full bg-white dark:bg-dark-darker">
-                    <CardHeader className="px-4 py-3 border-b border-border dark:border-slate-700 bg-muted/30 dark:bg-slate-800/60">
+                <Card className="border border-border dark:border-outline shadow-none w-full bg-white dark:bg-surface-raised">
+                    <CardHeader className="px-4 py-3 border-b border-border dark:border-outline bg-muted/30 dark:bg-surface-elevated">
                         <div className="flex items-center justify-between gap-2 w-full">
                             <CardTitle className="text-sm font-semibold text-foreground">
                                 Tool Length Sensor
@@ -135,8 +149,8 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
             </div>
 
             {/* Advanced Section */}
-            <Card className="border border-border dark:border-slate-700 shadow-none w-full bg-white dark:bg-dark-darker">
-                <CardHeader className="px-4 py-3 border-b border-border dark:border-slate-700 bg-muted/30 dark:bg-slate-800/60">
+            <Card className="border border-border dark:border-outline shadow-none w-full bg-white dark:bg-surface-raised">
+                <CardHeader className="px-4 py-3 border-b border-border dark:border-outline bg-muted/30 dark:bg-surface-elevated">
                     <div className="flex items-center justify-between gap-2 w-full">
                         <CardTitle className="text-sm font-semibold text-foreground">
                             Advanced Settings
@@ -150,7 +164,7 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <SlidersHorizontal className={iconClass} />
-                                    <Label className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    <Label className="text-xs font-semibold text-gray-900 dark:text-content-primary">
                                         Offset Management
                                     </Label>
                                 </div>
@@ -213,7 +227,7 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <Move className={iconClass} />
-                                    <Label className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    <Label className="text-xs font-semibold text-gray-900 dark:text-content-primary">
                                         Manual Change Position
                                     </Label>
                                 </div>
@@ -237,13 +251,13 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <SlidersHorizontal className={iconClass} />
-                                    <Label className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    <Label className="text-xs font-semibold text-gray-900 dark:text-content-primary">
                                         Advanced
                                     </Label>
                                 </div>
                                 <div
                                     className={cn(
-                                        'rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-slate-800 flex items-center justify-between gap-3 w-full',
+                                        'rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-surface-elevated flex items-center justify-between gap-3 w-full',
                                         {
                                             [nonDefaultStyling]:
                                                 config.variables
@@ -255,7 +269,7 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                         },
                                     )}
                                 >
-                                    <Label className="text-xs font-medium text-gray-700 dark:text-white flex-1">
+                                    <Label className="text-xs font-medium text-gray-700 dark:text-content-primary flex-1">
                                         Retain tool table settings when rack
                                         removed
                                     </Label>
@@ -288,14 +302,14 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <ShieldCheck className={iconClass} />
-                                    <Label className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    <Label className="text-xs font-semibold text-gray-900 dark:text-content-primary">
                                         Safety Checks
                                     </Label>
                                 </div>
                                 <div className="space-y-3">
                                     <div
                                         className={cn(
-                                            'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-slate-800',
+                                            'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-surface-elevated',
                                             {
                                                 [nonDefaultStyling]:
                                                     config.variables._pres_sense
@@ -307,10 +321,14 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                     >
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="space-y-1">
-                                                <Label className={rowLabelClass}>
+                                                <Label
+                                                    className={rowLabelClass}
+                                                >
                                                     Pressure Sensor
                                                 </Label>
-                                                <div className={helperTextClass}>
+                                                <div
+                                                    className={helperTextClass}
+                                                >
                                                     Check pressure before tool
                                                     change
                                                 </div>
@@ -340,7 +358,7 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                     </div>
                                     <div
                                         className={cn(
-                                            'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-slate-800',
+                                            'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-surface-elevated',
                                             {
                                                 [nonDefaultStyling]:
                                                     config.variables
@@ -352,10 +370,14 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                     >
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="space-y-1">
-                                                <Label className={rowLabelClass}>
+                                                <Label
+                                                    className={rowLabelClass}
+                                                >
                                                     Tool-stud Sensor
                                                 </Label>
-                                                <div className={helperTextClass}>
+                                                <div
+                                                    className={helperTextClass}
+                                                >
                                                     Check tool collision before
                                                     tool unload
                                                 </div>
@@ -389,13 +411,13 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                     <SlidersHorizontal className={iconClass} />
-                                    <Label className="text-xs font-semibold text-gray-900 dark:text-white">
+                                    <Label className="text-xs font-semibold text-gray-900 dark:text-content-primary">
                                         Other
                                     </Label>
                                 </div>
                                 <div
                                     className={cn(
-                                        'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-slate-800',
+                                        'space-y-1 rounded-md px-2.5 py-1.5 bg-gray-50 dark:bg-surface-elevated',
                                         {
                                             [nonDefaultStyling]:
                                                 config.variables._tc_slot_offset
@@ -420,23 +442,32 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                             wrapperClassName="w-auto"
                                             value={forkSpacingStr}
                                             onChange={(e) =>
-                                                setForkSpacingStr(e.target.value)
+                                                setForkSpacingStr(
+                                                    e.target.value,
+                                                )
                                             }
                                             onBlur={() => {
-                                                const parsed = parseFloat(forkSpacingStr);
+                                                const parsed =
+                                                    parseFloat(forkSpacingStr);
                                                 if (!isNaN(parsed)) {
                                                     updateConfig({
                                                         variables: {
                                                             ...config.variables,
                                                             _tc_slot_offset: {
-                                                                ...config.variables._tc_slot_offset,
+                                                                ...config
+                                                                    .variables
+                                                                    ._tc_slot_offset,
                                                                 value: parsed,
                                                             },
                                                         },
                                                     });
                                                 } else {
                                                     setForkSpacingStr(
-                                                        String(config.variables._tc_slot_offset.value),
+                                                        String(
+                                                            config.variables
+                                                                ._tc_slot_offset
+                                                                .value,
+                                                        ),
                                                     );
                                                 }
                                             }}
@@ -445,11 +476,10 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                                                     e.currentTarget.blur();
                                                 }
                                             }}
-                                            className="h-7 w-16 text-xs border-gray-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white focus:border-blue-500 focus:ring-blue-500 shrink-0 ml-auto"
+                                            className="h-7 w-16 text-xs border-gray-300 dark:border-outline dark:bg-surface-sunken dark:text-content-primary focus:border-blue-500 focus:ring-blue-500 shrink-0 ml-auto"
                                         />
                                     </div>
                                 </div>
-
                             </div>
                             <div className="space-y-1">
                                 <div />
@@ -466,7 +496,7 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                     {uploading && (
                         <div className="flex flex-row gap-2 items-center">
                             <Spinner className="h-4 w-4" />
-                            <span className="text-gray-700 dark:text-gray-300">
+                            <span className="text-gray-700 dark:text-content-secondary">
                                 {status.message}
                             </span>
                         </div>
@@ -475,15 +505,19 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                     {!uploading && status.type === 'success' && (
                         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 border border-green-200 text-green-700 dark:bg-green-950/40 dark:border-green-800 dark:text-green-400 animate-in fade-in-0 duration-300">
                             <CheckCircle2 className="h-4 w-4 shrink-0" />
-                            <span className="text-xs font-medium">{status.message}</span>
+                            <span className="text-xs font-medium">
+                                {status.message}
+                            </span>
                         </div>
                     )}
 
-                    {!uploading && status.type !== 'success' && status.message && (
-                        <div className={cn('text-xs', getStatusColor())}>
-                            {status.message}
-                        </div>
-                    )}
+                    {!uploading &&
+                        status.type !== 'success' &&
+                        status.message && (
+                            <div className={cn('text-xs', getStatusColor())}>
+                                {status.message}
+                            </div>
+                        )}
 
                     {uploadError && !uploading && (
                         <p className="text-xs font-bold text-red-600">
@@ -495,7 +529,9 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
                         <div className="flex items-start gap-2 rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
                             <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                             <p>
-                                Unable to read board config (<code>ATCI.macro</code>). Ensure the file exists and SD card is installed — apply disabled.
+                                Unable to read board config (
+                                <code>ATCI.macro</code>). Ensure the file exists
+                                and SD card is installed — apply disabled.
                             </p>
                         </div>
                     )}
@@ -503,7 +539,10 @@ export const ConfigTab: React.FC = ({ uploading, uploadError, macroReadFailed }:
 
                 {/* Apply Button - 40% */}
                 <div className="w-2/5 flex items-center justify-end">
-                    <Button onClick={applyConfig} disabled={uploading || !!macroReadFailed}>
+                    <Button
+                        onClick={applyConfig}
+                        disabled={uploading || !!macroReadFailed}
+                    >
                         {uploading ? 'Applying...' : 'Apply'}
                     </Button>
                 </div>

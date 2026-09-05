@@ -1,12 +1,11 @@
-import { BsEthernet, BsUsbPlug } from 'react-icons/bs';
-import { ConnectionType, FirmwareFlavour } from '../index';
-import { Port } from '../definitions';
-import Tooltip from 'app/components/Tooltip';
-import { useEffect, useState } from 'react';
+/** biome-ignore-all lint/a11y/useButtonType: <> */
 import store from 'app/store';
-import { FaArrowAltCircleRight } from 'react-icons/fa';
 import cn from 'classnames';
-import { JSX } from 'react';
+import { type JSX, useEffect, useState } from 'react';
+import { BsEthernet, BsUsbPlug } from 'react-icons/bs';
+import { FaArrowAltCircleRight } from 'react-icons/fa';
+import type { Port } from '../definitions';
+import { ConnectionType } from '../index';
 
 export interface PortListingsProps {
     ports: Port[];
@@ -20,7 +19,15 @@ function truncatePortName(port: string = ''): string {
     return portName.substring(portName.length - 10, portName.length);
 }
 
-export function PortListingButton({ port, connectionHandler, baud }: { port: Port, connectionHandler: (port: string, type: ConnectionType) => void, baud: number }): JSX.Element {
+export function PortListingButton({
+    port,
+    connectionHandler,
+    baud,
+}: {
+    port: Port;
+    connectionHandler: (port: string, type: ConnectionType) => void;
+    baud: number;
+}): JSX.Element {
     return (
         <button
             type="button"
@@ -73,7 +80,7 @@ export function PortListings(props: PortListingsProps): JSX.Element {
     }
 
     return (
-        <div className="w-full bg-white dark:bg-dark divide-y divide-dotted divide-blue-300">
+        <div className="w-full bg-white dark:bg-surface-raised divide-y divide-dotted divide-blue-300">
             {props.ports.length === 0 && (
                 <p className="font-normal flex items-center justify-center p-2 mt-2">
                     No USB devices found
@@ -107,23 +114,31 @@ export function PortListings(props: PortListingsProps): JSX.Element {
             {props.unrecognizedPorts.length > 0 && (
                 <div className="flex flex-col overflow-hidden">
                     <button
-                        className="text-base text-gray-700 dark:text-gray-300 my-2 flex flex-row justify-between items-center px-2 outline-none"
+                        className="text-base text-gray-700 dark:text-content-secondary my-2 flex flex-row justify-between items-center px-2 outline-none"
                         onClick={toggleUnrecognizedPorts}
                     >
                         <span>Unrecognized Ports</span>
                         <span
-                            className={cn('transition-transform duration-300 ease-in-out', {
-                                'rotate-90': openUnrecognized,
-                            })}
+                            className={cn(
+                                'transition-transform duration-300 ease-in-out',
+                                {
+                                    'rotate-90': openUnrecognized,
+                                },
+                            )}
                         >
                             <FaArrowAltCircleRight />
                         </span>
                     </button>
                     <div
-                        className={cn('flex flex-col transition-all duration-300 ease-in-out origin-top', {
-                            'max-h-0 opacity-0 scale-y-0': !openUnrecognized,
-                            'max-h-[500px] opacity-100 scale-y-100': openUnrecognized,
-                        })}
+                        className={cn(
+                            'flex flex-col transition-all duration-300 ease-in-out origin-top',
+                            {
+                                'max-h-0 opacity-0 scale-y-0':
+                                    !openUnrecognized,
+                                'max-h-[500px] opacity-100 scale-y-100':
+                                    openUnrecognized,
+                            },
+                        )}
                     >
                         {props.unrecognizedPorts.map((port) => {
                             return (

@@ -1,5 +1,5 @@
-import { Notification } from 'app/workspace/definitions';
 import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import type { Notification } from 'app/workspace/definitions';
 
 import { NotificationItem } from './NotificationItem';
 
@@ -28,7 +28,7 @@ const NotificationList = ({ value }: Props) => {
     }
 
     return (
-        <div className="flex flex-col gap-2 pr-1 items-center text-sm text-black max-h-[200px] min-h-[200px] overflow-y-auto">
+        <div className="flex flex-col gap-2 items-center text-sm text-black max-h-[200px] min-h-[200px] overflow-y-auto">
             {filteredNotifications.toReversed().map((tab) => (
                 <NotificationItem key={tab.id} notification={tab} />
             ))}

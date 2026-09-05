@@ -1,13 +1,13 @@
+import { usePostHog } from '@posthog/react';
 import aLabels from 'app/features/Jogging/assets/aLabels.svg';
 import TabJog from 'app/features/Jogging/components/TabJog.tsx';
 import {
     aMinusJog,
     aPlusJog,
     continuousJogAxis,
-    JoggerProps,
+    type JoggerProps,
     stopContinuousJog,
 } from 'app/features/Jogging/utils/Jogging.ts';
-import { usePostHog } from 'posthog-js/react';
 import { useLongPress } from 'use-long-press';
 
 export function AJog({
@@ -24,7 +24,7 @@ export function AJog({
     const aPlusJogHandlers = useLongPress(
         () => {
             continuousJogAxis({ [axis]: 1 }, feedrate);
-            posthog.capture('jog_a_plus', {
+            posthog?.capture('jog_a_plus', {
                 distance,
                 feedrate,
                 continuous: true,
@@ -35,7 +35,7 @@ export function AJog({
             threshold,
             onCancel: () => {
                 aPlusJog(distance, feedrate, false);
-                posthog.capture('jog_a_plus', {
+                posthog?.capture('jog_a_plus', {
                     distance,
                     feedrate,
                     continuous: false,
@@ -48,7 +48,7 @@ export function AJog({
     const aMinusJogHandlers = useLongPress(
         () => {
             continuousJogAxis({ [axis]: -1 }, feedrate);
-            posthog.capture('jog_a_minus', {
+            posthog?.capture('jog_a_minus', {
                 distance,
                 feedrate,
                 continuous: true,
@@ -59,7 +59,7 @@ export function AJog({
             threshold,
             onCancel: () => {
                 aMinusJog(distance, feedrate, false);
-                posthog.capture('jog_a_minus', {
+                posthog?.capture('jog_a_minus', {
                     distance,
                     feedrate,
                     continuous: false,

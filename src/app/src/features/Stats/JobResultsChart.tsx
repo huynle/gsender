@@ -1,13 +1,14 @@
-import { useContext } from 'react';
 import { Job, StatContext } from 'app/features/Stats/utils/StatContext.tsx';
+import { ArcElement, Chart as ChartJS, Legend, Tooltip } from 'chart.js';
+import { useContext } from 'react';
 import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { FaChartPie } from 'react-icons/fa';
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export function EmptyDataPlaceholder() {
     return (
-        <div className="flex flex-col gap-2 items-center justify-center text-gray-700 dark:text-white">
+        <div className="flex flex-col gap-2 items-center justify-center text-gray-700 dark:text-content-primary">
             <span className="text-6xl">
                 <FaChartPie />
             </span>
@@ -84,7 +85,7 @@ export function JobResultsChart() {
     };
 
     return (
-            <Bar data={data} options={options} className="dark:text-white" />
+            <Bar data={data} options={options} className="dark:text-content-primary" />
         </div>
     );
 }

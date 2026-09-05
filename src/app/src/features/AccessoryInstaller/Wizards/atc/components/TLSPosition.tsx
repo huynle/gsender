@@ -1,13 +1,13 @@
-import { StepProps } from 'app/features/AccessoryInstaller/types';
-import { StepActionButton } from 'app/features/AccessoryInstaller/components/wizard/StepActionButton.tsx';
-import { PositionSetter } from 'app/features/AccessoryInstaller/Wizards/atc/components/PositionSetter.tsx';
-import { useSelector } from 'react-redux';
-import { RootState } from 'app/store/redux';
-import { useEffect, useRef, useState } from 'react';
-import controller from 'app/lib/controller.ts';
-import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
-import { mapPositionToUnits, in2mm } from 'app/lib/units.ts';
+import { StepActionButton } from 'app/components/Wizard/StepActionButton.tsx';
+import type { StepProps } from 'app/components/Wizard/types';
 import { IMPERIAL_UNITS } from 'app/constants';
+import { PositionSetter } from 'app/features/AccessoryInstaller/Wizards/atc/components/PositionSetter.tsx';
+import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
+import controller from 'app/lib/controller.ts';
+import { in2mm, mapPositionToUnits } from 'app/lib/units.ts';
+import type { RootState } from 'app/store/redux';
+import { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 export function TLSPosition({ onComplete, onUncomplete }: StepProps) {
     const applySettings = async () => {
@@ -23,7 +23,13 @@ export function TLSPosition({ onComplete, onUncomplete }: StepProps) {
 
     useEffect(() => {
         if (isManuallyEditing.current) return;
-        if (!mpos || mpos.x === undefined || mpos.y === undefined || mpos.z === undefined) return;
+        if (
+            !mpos ||
+            mpos.x === undefined ||
+            mpos.y === undefined ||
+            mpos.z === undefined
+        )
+            return;
         const { x, y, z } = mpos;
         setPosition({
             x: mapPositionToUnits(x, units),
@@ -50,9 +56,10 @@ export function TLSPosition({ onComplete, onUncomplete }: StepProps) {
 
     return (
         <div className="flex flex-col gap-5 justify-start">
-            <p className="dark:text-white">
+            <p className="dark:text-content-primary">
                 Please jog until just above the Tool Length Sensor and set the
-                position of your tool length sensor using the <b>“Set Position”</b>
+                position of your tool length sensor using the{' '}
+                <b>“Set Position”</b>
                 button.
             </p>
             <PositionSetter

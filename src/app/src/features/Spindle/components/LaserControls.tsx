@@ -21,15 +21,14 @@
  *
  */
 
-import React from 'react';
-
-import { Slider } from 'app/components/shadcn/Slider';
-import { ControlledInput } from 'app/components/ControlledInput';
-import { FaLightbulb, FaRegLightbulb, FaSatelliteDish } from 'react-icons/fa';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
 import { ActiveStateButton } from 'app/components/ActiveStateButton';
+import { ControlledInput } from 'app/components/ControlledInput';
+import { Slider } from 'app/components/shadcn/Slider';
 import Tooltip from 'app/components/Tooltip';
-import { SendM5Type } from '../definitions';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import type React from 'react';
+import { FaLightbulb, FaRegLightbulb, FaSatelliteDish } from 'react-icons/fa';
+import type { SendM5Type } from '../definitions';
 
 type Props = {
     actions: LaserActions;
@@ -92,7 +91,7 @@ const LaserControls = ({ actions, state, canClick, isConnected }: Props) => {
                     tooltip={{ content: 'Turn off laser' }}
                 />
             </div>
-            <div className="grid grid-cols-[1fr_3fr_1fr] gap-2 justify-center mt-2 items-center dark:text-white">
+            <div className="grid grid-cols-[1fr_3fr_1fr] gap-2 justify-center mt-2 items-center dark:text-content-primary">
                 <span className="text-right">Power</span>
                 <Tooltip content="Adjust laser power">
                     <Slider
@@ -108,7 +107,7 @@ const LaserControls = ({ actions, state, canClick, isConnected }: Props) => {
                 </Tooltip>
                 <span>{laser.power}%</span>
             </div>
-            <div className="flex gap-2 justify-center items-center mt-1 dark:text-white">
+            <div className="flex gap-2 justify-center items-center mt-1 dark:text-content-primary">
                 <label htmlFor="laser-test-duration">Test Duration:</label>
                 <div className="flex gap-2">
                     <Tooltip content="Laser test duration">

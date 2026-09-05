@@ -1,15 +1,15 @@
-import _ from 'lodash';
-import combokeys from './combokeys';
-import store from '../store';
-import shuttleEvents from './shuttleEvents';
 import { MACRO_CATEGORY } from 'app/constants';
-import {
+import reduxStore from 'app/store/redux';
+import { updateShuttleStatus } from 'app/store/redux/slices/shortcuts.slice';
+import _ from 'lodash';
+import store from '../store';
+import combokeys from './combokeys';
+import type {
     CommandKeys,
     ShuttleControlEvents,
     ShuttleEvent,
 } from './definitions/shortcuts';
-import reduxStore from 'app/store/redux';
-import { updateShuttleStatus } from 'app/store/redux/slices/shortcuts.slice';
+import shuttleEvents from './shuttleEvents';
 
 const TARGET_NUM_CALLS = 16; // this is the current number of times that useKeybinding is called throughout the program
 let numCalls = 0; // number of useKeybinding hooks that have been called
@@ -51,7 +51,7 @@ function useKeybinding(shuttleControlEvents: ShuttleControlEvents): void {
                 !currentCommandKeys[defaultShuttle.cmd]
             ) {
                 // add to store
-                let updatedCommandKeys = JSON.parse(
+                const updatedCommandKeys = JSON.parse(
                     JSON.stringify(currentCommandKeys),
                 );
                 const key = defaultShuttle.keys || '';
@@ -106,10 +106,7 @@ export function removeOldKeybindings(): void {
     // Only keep keybindings that exist in the shuttleControlEvents arrays
     Object.entries(currentCommandKeys).forEach(([key, keybinding]) => {
         const event = allShuttleControlEvents[key];
-        if (
-            event !== undefined ||
-            keybinding?.category === MACRO_CATEGORY
-        ) {
+        if (event !== undefined || keybinding?.category === MACRO_CATEGORY) {
             updatedCommandKeys[key] = keybinding;
         }
     });

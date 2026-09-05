@@ -1,22 +1,21 @@
-import { useEffect, useState } from 'react';
-import { FaPaperPlane } from 'react-icons/fa6';
-
+import { Button } from 'app/components/Button';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from 'app/components/shadcn/Popover';
-import { Button } from 'app/components/Button';
-import { UnitInput } from 'app/components/UnitInput';
-import { DROPosition } from 'app/features/DRO/utils/DRO';
-import controller from 'app/lib/controller';
-import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
-import { METRIC_UNITS } from 'app/constants';
 import Tooltip from 'app/components/Tooltip';
+import { UnitInput } from 'app/components/UnitInput';
+import { METRIC_UNITS } from 'app/constants';
+import type { DROPosition } from 'app/features/DRO/utils/DRO';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
+import controller from 'app/lib/controller';
 import store from 'app/store';
+import type { RootState } from 'app/store/redux';
 import { get } from 'lodash';
-import { RootState } from 'app/store/redux';
+import { useEffect, useState } from 'react';
+import { FaPaperPlane } from 'react-icons/fa6';
 
 type MovementMode = 'abs' | 'inc' | 'mcs';
 
@@ -226,7 +225,7 @@ export function GoTo({ units, wpos, disabled }: GotoProps) {
                                         !isDisabled && onModeChange(key)
                                     }
                                     className={`flex-1 py-1 text-xs font-medium transition-colors
-                                        ${isActive ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}
+                                        ${isActive ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100 dark:text-content-primary dark:hover:bg-surface-hover'}
                                         ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                                     disabled={isDisabled}
                                     title={
@@ -278,5 +277,6 @@ export function GoTo({ units, wpos, disabled }: GotoProps) {
                 </div>
             </PopoverContent>
         </Popover>
-    );Ï
+    );
+    Ï;
 }

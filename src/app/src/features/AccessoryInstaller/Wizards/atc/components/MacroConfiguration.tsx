@@ -1,11 +1,12 @@
-import { StepProps } from 'app/features/AccessoryInstaller/types';
-import { StepActionButton } from 'app/features/AccessoryInstaller/components/wizard/StepActionButton.tsx';
-import { useEffect, useState } from 'react';
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: <> */
+import { StepActionButton } from 'app/components/Wizard/StepActionButton.tsx';
+import type { StepProps } from 'app/components/Wizard/types';
 import { generateAllMacros } from 'app/features/ATC/components/Configuration/utils/ConfigUtils.ts';
-import controller from 'app/lib/controller.ts';
+import controller from 'app/lib/controller';
 import store from 'app/store';
+import { type SetStateAction, useEffect, useState } from 'react';
 
-export function MacroConfiguration({ onComplete, onUncomplete }: StepProps) {
+export function MacroConfiguration({ onComplete }: StepProps) {
     const [rackSize, setRackSize] = useState<number | string>(6);
     const [isComplete, setIsComplete] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -15,13 +16,15 @@ export function MacroConfiguration({ onComplete, onUncomplete }: StepProps) {
         const handleYmodemComplete = () => {
             setIsComplete(true);
             setError(null);
-            setSuccess('Successfully uploaded macro configuration to the SD card.');
+            setSuccess(
+                'Successfully uploaded macro configuration to the SD card.',
+            );
             onComplete();
             setTimeout(() => {
                 setIsComplete(false);
             }, 2000);
         };
-        const handleYmodemError = (err) => {
+        const handleYmodemError = (err: SetStateAction<string>) => {
             setError(err);
             setTimeout(() => {
                 setIsComplete(false);
@@ -72,7 +75,7 @@ export function MacroConfiguration({ onComplete, onUncomplete }: StepProps) {
     return (
         <div className="flex flex-col gap-5 justify-start">
             <div>
-                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-400 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-content-muted mb-2">
                     Rack Size
                 </label>
                 <select
@@ -85,15 +88,15 @@ export function MacroConfiguration({ onComplete, onUncomplete }: StepProps) {
                     <option value={12}>12 Tool Rack</option>
                 </select>
             </div>
-            <p className="dark:text-white">
+            <p className="dark:text-content-primary">
                 Sienci ATC operates using a set of macro programs stored in the
                 micro SD card of your controller.
             </p>
 
-            <p className="dark:text-white">
-                Specify your rack size and press <b>“Upload Macros”</b> to upload the
-                relevant program files into the SD card. This can be changed
-                later.
+            <p className="dark:text-content-primary">
+                Specify your rack size and press <b>“Upload Macros”</b> to
+                upload the relevant program files into the SD card. This can be
+                changed later.
             </p>
 
             <StepActionButton

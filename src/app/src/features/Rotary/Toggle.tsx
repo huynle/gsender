@@ -1,10 +1,10 @@
+import { usePostHog } from '@posthog/react';
 import { Switch } from 'app/components/shadcn/Switch';
-import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
-import { WORKSPACE_MODE } from 'app/constants';
-import { updateWorkspaceMode } from 'app/lib/rotary';
-import { useTypedSelector } from 'app/hooks/useTypedSelector';
 import Tooltip from 'app/components/Tooltip';
-import { usePostHog } from 'posthog-js/react';
+import { WORKSPACE_MODE } from 'app/constants';
+import { useTypedSelector } from 'app/hooks/useTypedSelector';
+import { useWorkspaceState } from 'app/hooks/useWorkspaceState';
+import { updateWorkspaceMode } from 'app/lib/rotary';
 
 const Toggle = () => {
     const { mode } = useWorkspaceState();
@@ -21,7 +21,7 @@ const Toggle = () => {
 
         updateWorkspaceMode(newMode);
 
-        posthog.capture('rotary_mode_toggled', { mode: newMode });
+        posthog?.capture('rotary_mode_toggled', { mode: newMode });
     };
 
     const tooltipContent =
@@ -30,7 +30,7 @@ const Toggle = () => {
             : 'Toggle Rotary mode';
 
     return (
-        <div className="flex items-center gap-2 dark:text-white">
+        <div className="flex items-center gap-2 dark:text-content-primary">
             {controllerType === 'grblHAL' && <span>4-Axis</span>}
             <Tooltip content={tooltipContent}>
                 <div>

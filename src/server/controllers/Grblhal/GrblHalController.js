@@ -26,24 +26,54 @@ import ensureArray from "ensure-array";
 import * as parser from "gcode-parser";
 import _ from "lodash";
 import map from "lodash/map";
-
-import GcodeToolpath from "../../lib/GcodeToolpath";
+import { YModem } from "server/lib/YModemUSB";
+import {
+	ALARM,
+	CONTROLLER_READY,
+	CYCLE_START,
+	ERROR,
+	FEED_HOLD,
+	FILE_UNLOAD,
+	HOMING,
+	MACRO_LOAD,
+	MACRO_RUN,
+	METRIC_UNITS,
+	PROGRAM_END,
+	PROGRAM_PAUSE,
+	PROGRAM_RESUME,
+	PROGRAM_START,
+	SLEEP,
+} from "../../../app/src/constants";
+import delay from "../../lib/delay";
 import EventTrigger from "../../lib/EventTrigger";
+import ensurePositiveNumber from "../../lib/ensure-positive-number";
+import evaluateAssignmentExpression from "../../lib/evaluate-assignment-expression";
+import { extractRealtimeCommands } from "../../lib/extract-realtime-commands";
 import Feeder from "../../lib/Feeder";
+import GcodeToolpath from "../../lib/GcodeToolpath";
+import { GrblHALFTP } from "../../lib/GrblHALFTP";
+import {
+	GCODE_TRANSLATION_TYPE,
+	translateGcode,
+} from "../../lib/gcode-translation";
+import {
+	determineHALMachineZeroFlag,
+	determineMaxMovement,
+	getAxisMaximumLocation,
+} from "../../lib/homing";
+import logger from "../../lib/logger";
+import { PluginParserChain } from "../../lib/plugin-parsers";
 import Sender, { SP_TYPE_CHAR_COUNTING } from "../../lib/Sender";
+import ToolChanger from "../../lib/ToolChanger";
+import translateExpression from "../../lib/translate-expression";
 import Workflow, {
 	WORKFLOW_STATE_IDLE,
 	WORKFLOW_STATE_PAUSED,
 	WORKFLOW_STATE_RUNNING,
 } from "../../lib/Workflow";
-import delay from "../../lib/delay";
-import ensurePositiveNumber from "../../lib/ensure-positive-number";
-import evaluateAssignmentExpression from "../../lib/evaluate-assignment-expression";
-import logger from "../../lib/logger";
-import translateExpression from "../../lib/translate-expression";
-import { extractRealtimeCommands } from "../../lib/extract-realtime-commands";
 import config from "../../services/configstore";
 import monitor from "../../services/monitor";
+import pluginRegistry from "../../services/pluginregistry";
 import taskRunner from "../../services/taskrunner";
 import store from "../../store";
 import {
@@ -53,52 +83,23 @@ import {
 	WRITE_SOURCE_FEEDER,
 	Y_AXIS_COMMANDS,
 } from "../constants";
-import GrblHalRunner from "./GrblHalRunner";
+import { calcOverrides } from "../runOverride";
 import {
-	GRBLHAL,
-	GRBLHAL_REALTIME_COMMANDS,
+	ATCI_SUPPORTED_VERSION,
+	GRBL_HAL_ACTIVE_STATE_ALARM,
+	GRBL_HAL_ACTIVE_STATE_CHECK,
+	GRBL_HAL_ACTIVE_STATE_HOLD,
+	GRBL_HAL_ACTIVE_STATE_HOME,
+	GRBL_HAL_ACTIVE_STATE_IDLE,
+	GRBL_HAL_ACTIVE_STATE_RUN,
 	GRBL_HAL_ALARMS,
 	GRBL_HAL_ERRORS,
 	GRBL_HAL_SETTINGS,
-	GRBL_HAL_ACTIVE_STATE_HOME,
-	GRBL_HAL_ACTIVE_STATE_HOLD,
-	GRBL_HAL_ACTIVE_STATE_IDLE,
-	GRBL_HAL_ACTIVE_STATE_CHECK,
-	GRBL_HAL_ACTIVE_STATE_RUN,
-	GRBL_HAL_ACTIVE_STATE_ALARM,
-	ATCI_SUPPORTED_VERSION,
+	GRBLHAL,
+	GRBLHAL_REALTIME_COMMANDS,
 } from "./constants";
-import {
-	METRIC_UNITS,
-	PROGRAM_PAUSE,
-	PROGRAM_RESUME,
-	PROGRAM_START,
-	PROGRAM_END,
-	CONTROLLER_READY,
-	FEED_HOLD,
-	CYCLE_START,
-	HOMING,
-	SLEEP,
-	MACRO_RUN,
-	MACRO_LOAD,
-	FILE_UNLOAD,
-	ALARM,
-	ERROR,
-} from "../../../app/src/constants";
-import {
-	determineHALMachineZeroFlag,
-	determineMaxMovement,
-	getAxisMaximumLocation,
-} from "../../lib/homing";
-import { calcOverrides } from "../runOverride";
-import ToolChanger from "../../lib/ToolChanger";
-import {
-	GCODE_TRANSLATION_TYPE,
-	translateGcode,
-} from "../../lib/gcode-translation";
+import GrblHalRunner from "./GrblHalRunner";
 
-import { YModem } from "server/lib/YModemUSB";
-import { GrblHALFTP } from "../../lib/GrblHALFTP";
 // % commands
 const WAIT = "%wait";
 const PREHOOK_COMPLETE = "%pre_complete";
@@ -284,7 +285,7 @@ class GrblHalController {
 
 			{
 				// Grbl settings: $0-$255
-				const r = line.match(/^(\$\d{1,3})=([\d\.]+)$/);
+				const r = line.match(/^(\$\d{1,3})=([\d.]+)$/);
 				if (r) {
 					const name = r[1];
 					const value = Number(r[2]);
@@ -318,8 +319,8 @@ class GrblHalController {
 		// Feeder
 		this.feeder = new Feeder({
 			dataFilter: (line, context) => {
-				let commentMatcher = /\s*;.*/g;
-				let comment = line.match(commentMatcher);
+				const commentMatcher = /\s*;.*/g;
+				const comment = line.match(commentMatcher);
 				const commentString =
 					comment && comment[0].length > 0
 						? comment[0].trim().replace(";", "")
@@ -493,9 +494,9 @@ class GrblHalController {
 			bufferSize: 1024 - 300, // TODO: Parse this out from OPT
 			dataFilter: (line, context) => {
 				// Remove comments that start with a semicolon `;`
-				let commentMatcher = /\s*;.*/g;
-				let bracketCommentLine = /\([^\)]*\)/gm;
-				let toolCommand = /(T)(-?\d*\.?\d+\.?)/;
+				const commentMatcher = /\s*;.*/g;
+				const bracketCommentLine = /\([^)]*\)/gm;
+				const toolCommand = /(T)(-?\d*\.?\d+\.?)/;
 				const commentRegex = /\(([^)]*)\)|;(.*)/g;
 				const commentParts = [];
 				let m;
@@ -503,7 +504,7 @@ class GrblHalController {
 					const text = (m[1] !== undefined ? m[1] : m[2]).trim();
 					if (text) commentParts.push(text);
 				}
-				let commentString = commentParts.join(" ");
+				const commentString = commentParts.join(" ");
 				if (line[0] !== "%") {
 					line = line.replace(bracketCommentLine, "").trim();
 					line = line.replace(commentMatcher, "").replace("/uFEFF", "").trim();
@@ -584,7 +585,7 @@ class GrblHalController {
 						return line.replace(/M0*6(?!\d)/i, "(M6)");
 					}
 
-					let tool = line.match(toolCommand);
+					const tool = line.match(toolCommand);
 					log.debug("Found tool");
 					let toolLabel = tool?.[0] || null;
 					let toolNumber = tool?.[2] || null;
@@ -725,11 +726,6 @@ class GrblHalController {
 					this.command("gcode", "[global.state.testWCS]");
 				}, 200);
 				this.emit("gcode_error_checking_file", this.sender.state, "finished");
-			} else if (this.sender.state.toolChanges > 0) {
-				// A tool change macro probes the incoming tool and stores its
-				// offset with G10 L1, so the tool table is stale once a job with
-				// tool changes finishes. Nothing is streaming now, so re-read it.
-				this.command("gcode", "$#");
 			}
 		});
 		this.sender.on("requestData", () => {
@@ -765,7 +761,7 @@ class GrblHalController {
 		this.workflow.on("resume", (...args) => {
 			this.emit("workflow:state", this.workflow.state);
 
-			let pauseTime = new Date().getTime() - this.timePaused;
+			const pauseTime = new Date().getTime() - this.timePaused;
 
 			// if there was error and feeder was holding, don't reset
 			if (this.feeder.state.hold) {
@@ -786,7 +782,25 @@ class GrblHalController {
 		// Grbl
 		this.runner = new GrblHalRunner();
 
-		this.runner.on("raw", noop);
+		// Plugin-defined parsers. Fed from "raw", which fires for every line
+		// before any built-in parsing, so a plugin can see lines that never make
+		// it to serialport:read (status, json, descriptions). Observe-only:
+		// nothing here can consume a line or affect built-in parsing.
+		this.pluginParsers = new PluginParserChain({
+			emit: (eventName, payload) => this.emit(eventName, payload),
+			getWorkflowState: () => this.workflow?.state,
+			log,
+		});
+
+		this.runner.on("raw", ({ raw }) => {
+			// feed() already swallows everything; this is the second belt so a
+			// plugin can never break the serial read path.
+			try {
+				this.pluginParsers.feed(raw);
+			} catch (err) {
+				log.error(`plugin parser chain failed: ${err.message}`);
+			}
+		});
 
 		this.runner.on("spindle", (spindle) => {
 			this.emit("spindle:add", spindle);
@@ -1115,10 +1129,6 @@ class GrblHalController {
 			this.emit("serialport:read", res.raw);
 		});
 
-		this.runner.on("tool", (res) => {
-			this.emit("serialport:read", res.raw);
-		});
-
 		this.runner.on("feedback", (res) => {
 			this.emit("serialport:read", res.raw);
 		});
@@ -1215,6 +1225,11 @@ class GrblHalController {
 			if (payload.subtype) {
 				this.emit("atci", payload);
 			}
+		});
+
+		this.runner.on("autoconfig", (payload) => {
+			this.emit("serialport:read", payload.raw);
+			this.emit("grblHal:autoconfig", payload);
 		});
 
 		const queryStatusReport = () => {
@@ -1350,7 +1365,6 @@ class GrblHalController {
 					"status.activeState",
 					"",
 				);
-
 				// only pause countdown once machine is idle
 				if (
 					this.workflow.isPaused() &&
@@ -1689,6 +1703,11 @@ class GrblHalController {
 			this.runner = null;
 		}
 
+		if (this.pluginParsers) {
+			this.pluginParsers.destroy();
+			this.pluginParsers = null;
+		}
+
 		if (this.toolChanger) {
 			this.toolChanger.clearInterval();
 		}
@@ -1749,12 +1768,19 @@ class GrblHalController {
 
 		callback(); // register controller
 
-		// Nothing else here matters if connecting to existing instantiated controller
+		// Nothing else here matters if connecting to existing instantiated controller.
+		// Don't re-run the startup query sequence (initController) here — it writes
+		// directly to the serial line ($$, $ES, $EG, etc.) and can collide with an
+		// actively streaming job. The joining socket already gets current cached
+		// state via addConnection().
 		if (refresh) {
 			this.initialized = true;
-			this.initController(this.runner.settings?.version?.semver);
 			return;
 		}
+
+		// Manifest-declared parsers go live here, so they are watching from the
+		// moment the port opens regardless of whether any plugin UI is mounted.
+		this.reloadPluginParsers();
 
 		this.workflow.stop();
 
@@ -1787,6 +1813,11 @@ class GrblHalController {
 
 		// Clear initialized flag
 		this.initialized = false;
+
+		// Flush any open plugin blocks with complete:false, so a subscriber that
+		// was waiting on a block the disconnect made impossible to finish gets a
+		// terminal result instead of hanging.
+		this.pluginParsers?.reset("close");
 
 		// Reset homing runtime state
 		if (this.hasHomedSet) {
@@ -1826,6 +1857,129 @@ class GrblHalController {
 		}
 		log.debug(`Loading file '${name}' to controller`);
 		this.command("gcode:load", name, gcode);
+	}
+
+	// --- Plugin parsers -------------------------------------------------------
+
+	/**
+	 * Rebuilds the manifest-declared parser chain from the plugin registry.
+	 * Called on port open and whenever plugins are enabled, disabled, or
+	 * imported. Runtime registrations are untouched.
+	 */
+	reloadPluginParsers() {
+		if (!this.pluginParsers) {
+			return;
+		}
+		try {
+			this.pluginParsers.setManifestParsers(
+				pluginRegistry.getPluginParserSpecs(),
+			);
+		} catch (err) {
+			log.error(`Failed to load plugin parsers: ${err.message}`);
+		}
+	}
+
+	/**
+	 * @param {string} ownerId Identifies the registering plugin iframe instance,
+	 *   so its parsers can be dropped when it unmounts.
+	 */
+	registerPluginParsers(ownerId, pluginId, specs) {
+		if (!this.pluginParsers) {
+			return { registered: [], errors: [], warnings: [] };
+		}
+		return this.pluginParsers.registerRuntime(ownerId, pluginId, specs);
+	}
+
+	unregisterPluginParsers(ownerId, parserId) {
+		if (!this.pluginParsers) {
+			return { ok: true };
+		}
+		return this.pluginParsers.unregisterRuntime(ownerId, parserId);
+	}
+
+	/**
+	 * Sends a command and collects every line the firmware sends back until a
+	 * terminator, giving plugins the request/response shape the event stream
+	 * cannot express.
+	 *
+	 * @param {(err: Error|null, result?: object) => void} callback
+	 */
+	pluginQuery(cmd, opts = {}, callback = noop) {
+		if (!this.isOpen()) {
+			callback(new Error("Serial port is not open"));
+			return;
+		}
+		if (!this.pluginParsers) {
+			callback(new Error("Plugin parsers are not available"));
+			return;
+		}
+		if (typeof cmd !== "string" || cmd.trim() === "") {
+			callback(new Error("A command is required"));
+			return;
+		}
+
+		const allowDuringJob = Boolean(opts.allowDuringJob);
+
+		if (!this.workflow.isIdle() && !allowDuringJob) {
+			callback(
+				Object.assign(new Error("Machine is busy running a job"), {
+					code: "EBUSY",
+				}),
+			);
+			return;
+		}
+
+		// While a job streams, the firmware emits an `ok` per accepted line, so
+		// `ok`/`error` are indistinguishable from the sender's own responses. A
+		// query that runs then MUST bring its own terminator.
+		if (allowDuringJob && typeof opts.until !== "object") {
+			callback(
+				new Error(
+					'A query with allowDuringJob needs an explicit "until" pattern — ' +
+						"ok/error cannot be told apart from the running job's responses",
+				),
+			);
+			return;
+		}
+
+		if (this.pluginQueryInFlight) {
+			callback(
+				Object.assign(new Error("Another query is already in flight"), {
+					code: "EBUSY",
+				}),
+			);
+			return;
+		}
+
+		let until = opts.until ?? "ok-or-error";
+		if (until && typeof until === "object" && until.source) {
+			try {
+				until = new RegExp(until.source, (until.flags || "").replace(/[gy]/g, ""));
+			} catch (err) {
+				callback(new Error(`Invalid "until" pattern: ${err.message}`));
+				return;
+			}
+		}
+
+		this.pluginQueryInFlight = true;
+
+		// Open the capture window BEFORE writing. The write goes synchronously
+		// into the serial stream and feed() is driven off runner.parse(), so no
+		// response line can slip between the two.
+		this.pluginParsers.beginCapture({
+			until,
+			maxLines: opts.maxLines,
+			timeout: opts.timeout,
+			includeStatusReports: Boolean(opts.includeStatusReports),
+			onDone: (result) => {
+				this.pluginQueryInFlight = false;
+				callback(null, result);
+			},
+		});
+
+		// emit=true so a plugin-issued write is visible to the operator in the
+		// console rather than happening invisibly.
+		this.writeln(cmd, {}, true);
 	}
 
 	addConnection(socket) {
@@ -1908,7 +2062,7 @@ class GrblHalController {
 	command(cmd, ...args) {
 		const handler = {
 			"firmware:recievedProfiles": () => {
-				let [files] = args;
+				const [files] = args;
 				this.emit("task:finish", files);
 			},
 			"firmware:grabMachineProfile": () => {
@@ -1992,7 +2146,7 @@ class GrblHalController {
 					let spindleRate = 0;
 
 					const getWordValue = (token, words) => {
-						for (let wordPair of words) {
+						for (const wordPair of words) {
 							const [word, value] = wordPair;
 							if (word === token) {
 								return value;
@@ -2320,7 +2474,7 @@ class GrblHalController {
 				const [value] = args;
 				const [feedOV] = this.state.status.ov;
 
-				let diff = value - feedOV;
+				const diff = value - feedOV;
 				if (value === 100) {
 					this.FOQueue.push(String.fromCharCode(0x90));
 				} else {
@@ -2461,7 +2615,7 @@ class GrblHalController {
 				let unitModal = units === METRIC_UNITS ? "G21" : "G20";
 				let { $20, $130, $131, $132, $23, $13, $40 } = this.settings.settings;
 
-				let jogFeedrate = unitModal === "G21" ? 3000 : 118;
+				const jogFeedrate = unitModal === "G21" ? 3000 : 118;
 				if ($20 === "1" && $40 === "0") {
 					// if 40 enabled, can just use non-soft limit logic
 					$130 = Number($130);
@@ -2499,7 +2653,7 @@ class GrblHalController {
 						}
 					};
 
-					let { mpos } = this.state.status;
+					const { mpos } = this.state.status;
 					Object.keys(mpos).forEach((axis) => {
 						const val = Number(mpos[axis]);
 
