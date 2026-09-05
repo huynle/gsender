@@ -22,5 +22,6 @@ docker buildx build  -f DockerfilePi . \
    $SECRET_ARGS \
    --build-arg GITHUB_REF_NAME=$GITHUB_REF_NAME \
    --build-arg GITHUB_REF_TYPE=$GITHUB_REF_TYPE \
+   --build-arg COMMIT_COUNT=$COMMIT_COUNT \
    --build-arg GIT_COMMIT_LOG="git log -1 --format='%ci %H %s'" \
    --no-cache
