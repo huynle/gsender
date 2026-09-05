@@ -1146,6 +1146,22 @@ export const SettingsMenu: SettingsMenuSection[] = [
                     },
                     {
                         type: 'eeprom',
+                        eID: '$290',
+                    },
+                    {
+                        type: 'eeprom',
+                        eID: '$291',
+                    },
+                    {
+                        type: 'eeprom',
+                        eID: '$292',
+                    },
+                    {
+                        type: 'eeprom',
+                        eID: '$293',
+                    },
+                    {
+                        type: 'eeprom',
                         eID: '$170',
                     },
                     {
